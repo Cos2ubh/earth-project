@@ -96,11 +96,11 @@ const earth = new THREE.Mesh(earthGeometry, placeholderMaterial);
 earthSpin.add(earth);
 
 // Asynchronously load the shader material and swap it in.
-let setEarthSunDirection = null;
-buildEarthMaterial(earth).then(({ material, setSunDirection }) => {
+let updateEarthShader = null;
+buildEarthMaterial(earth).then(({ material, updateShader }) => {
     earth.material.dispose();
     earth.material = material;
-    setEarthSunDirection = setSunDirection;
+    updateEarthShader = updateShader;
     console.log('Earth textures loaded — shader material active.');
 }).catch((err) => {
     console.error('Failed to load Earth textures:', err);
@@ -309,9 +309,9 @@ function animate() {
     const state = getEarthState(now);
     applyEarthSpin(state.rotationAngle);
 
-    // Feed world-space Sun direction into the Earth + cloud shaders.
-    // Each handles the world→local transform internally.
-    if (setEarthSunDirection) setEarthSunDirection(state.sunDirection);
+    // Feed world-space Sun direction (and camera position for Earth's specular)
+    // into the Earth + cloud shaders. Each handles world→local transforms.
+    if (updateEarthShader) updateEarthShader(state.sunDirection, camera);
     if (setCloudSunDirection) setCloudSunDirection(state.sunDirection);
     if (tickClouds) tickClouds(dtSec);
 
