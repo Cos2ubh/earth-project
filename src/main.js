@@ -57,8 +57,24 @@ const hudEclipseSolar = document.getElementById('hud-eclipse-solar');
 const hudEclipseLunar = document.getElementById('hud-eclipse-lunar');
 const hudYouSection = document.getElementById('hud-you');
 const hudYouCoord = document.getElementById('hud-you-coord');
+const hudYouTz = document.getElementById('hud-you-tz');
+const hudYouWallTime = document.getElementById('hud-you-wall-time');
 const hudYouLocalTime = document.getElementById('hud-you-local-time');
 const hudYouSeason = document.getElementById('hud-you-season');
+
+// Browser's IANA time zone (e.g. "Asia/Kolkata", "America/New_York").
+// This is the user's system-configured zone — matches their phone / watch.
+const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+// Formatter for wall-clock time in the user's zone, including short zone name.
+const wallClockFormatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: userTimeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZoneName: 'short',
+});
 
 // Format a signed decimal degree as "12.34° N" / "12.34° S" etc.
 function formatLat(deg) {
@@ -329,6 +345,7 @@ function updateYouSection() {
     const now = getSimulatedTime();
     const eclipticLon = getEarthState(now).sunEclipticLongitude;
     hudYouLocalTime.textContent = localSolarTime(now, userLocation.lon);
+    hudYouWallTime.textContent = wallClockFormatter.format(now);
     hudYouSeason.textContent = seasonFor(eclipticLon, userLocation.lat);
 }
 
@@ -348,6 +365,7 @@ locateBtn.addEventListener('click', () => {
             hudYouCoord.textContent =
                 `${Math.abs(userLocation.lat).toFixed(2)}° ${userLocation.lat >= 0 ? 'N' : 'S'} · ` +
                 `${Math.abs(userLocation.lon).toFixed(2)}° ${userLocation.lon >= 0 ? 'E' : 'W'}`;
+            hudYouTz.textContent = userTimeZone;
             locateBtn.removeAttribute('data-loading');
             locateBtn.setAttribute('data-active', '1');
             locateBtn.textContent = 'located';
