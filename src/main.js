@@ -18,6 +18,7 @@
 //     └─ sunMarker        ← visible sphere at sunDirection × distance
 
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { getEarthState } from './astronomy.js';
 import { buildLatLonGrid } from './grid.js';
 import { buildEarthMaterial } from './earthMaterial.js';
@@ -27,6 +28,8 @@ const hudTilt = document.getElementById('hud-tilt');
 const hudRotation = document.getElementById('hud-rotation');
 const hudTime = document.getElementById('hud-time');
 const hudSunLon = document.getElementById('hud-sun-lon');
+const hudMoonPhase = document.getElementById('hud-moon-phase');
+const hudMoonDist = document.getElementById('hud-moon-dist');
 
 // --- Scene, camera, renderer -------------------------------------------------
 
@@ -34,12 +37,12 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 
 const camera = new THREE.PerspectiveCamera(
-    45,
+    55,
     window.innerWidth / window.innerHeight,
     0.1,
     1000,
 );
-camera.position.set(0, 0.6, 5);
+camera.position.set(0, 1.5, 6.5);
 camera.lookAt(0, 0, 0);
 
 const renderer = new THREE.WebGLRenderer({
@@ -48,6 +51,15 @@ const renderer = new THREE.WebGLRenderer({
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+// OrbitControls — click-drag to orbit, scroll to zoom. Panning disabled so
+// Earth stays centered as the reference point. Damping for a smoother feel.
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.enablePan = false;
+controls.minDistance = 2;
+controls.maxDistance = 25;
 
 // --- Earth hierarchy ---------------------------------------------------------
 
@@ -121,6 +133,26 @@ const sunMarkerMaterial = new THREE.MeshBasicMaterial({ color: 0xffdd66 });
 const sunMarker = new THREE.Mesh(sunMarkerGeometry, sunMarkerMaterial);
 scene.add(sunMarker);
 
+// --- Moon --------------------------------------------------------------------
+// Positioned at artistic scale — real Moon distance is ~60 Earth radii;
+// we compress to ~5 units so it's visible next to Earth (scale disclaimer
+// covers this). Real Moon:Earth radius ratio is 0.273; we use 0.15 for
+// visual balance at the compressed distance.
+//
+// The Moon uses MeshStandardMaterial so the Sun's DirectionalLight illuminates
+// it naturally — lunar phase emerges from the same lighting that gives Earth
+// its day/night terminator, no extra shader needed.
+
+const MOON_SCENE_DISTANCE = 5;
+const moonGeometry = new THREE.SphereGeometry(0.15, 48, 48);
+const moonMaterial = new THREE.MeshStandardMaterial({
+    color: 0xcccccc,
+    roughness: 1,
+    metalness: 0,
+});
+const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+scene.add(moon);
+
 // --- Apply orientations ------------------------------------------------------
 
 function applyAxialTilt(tiltDegrees) {
@@ -155,13 +187,24 @@ function formatUTC(date) {
     return iso.slice(0, 10) + ' ' + iso.slice(11, 19) + ' UTC';
 }
 
+function applyMoonState(moonState) {
+    moon.position.set(
+        moonState.direction.x * MOON_SCENE_DISTANCE,
+        moonState.direction.y * MOON_SCENE_DISTANCE,
+        moonState.direction.z * MOON_SCENE_DISTANCE,
+    );
+}
+
 // Slow updates: values that change over minutes / hours / days.
 function updateSlow() {
     const state = getEarthState();
     applyAxialTilt(state.axialTilt);
     applySunDirection(state.sunDirection);
+    applyMoonState(state.moon);
     hudTilt.textContent = state.axialTilt.toFixed(4) + '°';
     hudSunLon.textContent = state.sunEclipticLongitude.toFixed(3) + '°';
+    hudMoonPhase.textContent = (state.moon.phaseFraction * 100).toFixed(1) + '%';
+    hudMoonDist.textContent = Math.round(state.moon.distanceKm).toLocaleString() + ' km';
 }
 
 updateSlow();
@@ -193,6 +236,7 @@ function animate() {
     hudRotation.textContent = state.rotationAngle.toFixed(3) + '°';
     hudTime.textContent = formatUTC(now);
 
+    controls.update();
     renderer.render(scene, camera);
 }
 

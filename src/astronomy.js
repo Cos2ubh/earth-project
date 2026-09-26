@@ -104,6 +104,55 @@ export function getSunDirection(date = new Date()) {
 }
 
 /**
+ * Moon's position relative to Earth, in the scene's ecliptic frame.
+ * Returns:
+ *   direction — unit vector { x, y, z } from Earth toward Moon
+ *   distanceKm — actual Earth-Moon distance in kilometers
+ *   phaseFraction — 0.0 (new moon) to 1.0 (full moon), fraction of disk illuminated
+ *
+ * Uses astronomy-engine's full lunar theory (arcminute accurate), so the
+ * 5.14° orbital inclination and lunar parallax are handled correctly —
+ * the Moon does NOT sit in the ecliptic plane.
+ *
+ * Frame conversion:
+ *   astronomy-engine returns positions in J2000 equatorial coords
+ *     (+X = vernal equinox, +Z = celestial pole)
+ *   We swap y↔z to match the scene's convention
+ *     (+X = vernal equinox, +Y = ecliptic north, +Z = 90°E on ecliptic)
+ */
+export function getMoonState(date = new Date()) {
+    const time = Astronomy.MakeTime(date);
+
+    const equVec = Astronomy.GeoVector(Astronomy.Body.Moon, time, true);
+    const ecl = Astronomy.Ecliptic(equVec); // { vec, elat, elon }
+
+    // Magnitude of the ecliptic vector = Earth-Moon distance in AU.
+    const distanceAu = Math.sqrt(
+        ecl.vec.x * ecl.vec.x +
+        ecl.vec.y * ecl.vec.y +
+        ecl.vec.z * ecl.vec.z,
+    );
+    const AU_KM = 149597870.7;
+    const distanceKm = distanceAu * AU_KM;
+
+    // Unit vector in scene frame (swap y↔z, normalize).
+    const direction = {
+        x: ecl.vec.x / distanceAu,
+        y: ecl.vec.z / distanceAu, // AE ecliptic +Z (north) → our +Y
+        z: ecl.vec.y / distanceAu, // AE ecliptic +Y (90°E) → our +Z
+    };
+
+    // Illuminated fraction of Moon's disk as seen from Earth.
+    const illum = Astronomy.Illumination(Astronomy.Body.Moon, time);
+
+    return {
+        direction,
+        distanceKm,
+        phaseFraction: illum.phase_fraction,
+    };
+}
+
+/**
  * Convenience: everything at once, in a single object.
  * Cheaper than calling each function separately since it computes MakeTime once.
  */
@@ -115,5 +164,6 @@ export function getEarthState(date = new Date()) {
         rotationAngle: getEarthRotationAngle(date),
         sunEclipticLongitude: getSunEclipticLongitude(date),
         sunDirection: getSunDirection(date),
+        moon: getMoonState(date),
     };
 }
