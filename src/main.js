@@ -20,6 +20,7 @@
 import * as THREE from 'three';
 import { getEarthState } from './astronomy.js';
 import { buildLatLonGrid } from './grid.js';
+import { buildEarthMaterial } from './earthMaterial.js';
 
 const canvas = document.getElementById('canvas');
 const hudTilt = document.getElementById('hud-tilt');
@@ -57,17 +58,22 @@ const earthSpin = new THREE.Group();
 earthGroup.add(earthSpin);
 
 const earthGeometry = new THREE.SphereGeometry(1, 96, 96);
-// MeshStandardMaterial responds to lighting (unlike MeshBasic).
-// roughness=1, metalness=0 gives a matte finish — appropriate for a
-// planet without textures. Once Phase 7 lands, this becomes a
-// ShaderMaterial that blends day + night textures across the terminator.
-const earthMaterial = new THREE.MeshStandardMaterial({
-    color: 0x2a5a8a,
-    roughness: 1,
-    metalness: 0,
-});
-const earth = new THREE.Mesh(earthGeometry, earthMaterial);
+// Placeholder material — swapped for the shader material once textures load.
+// Keeps the sphere visible during the async texture fetch (typically < 200ms).
+const placeholderMaterial = new THREE.MeshBasicMaterial({ color: 0x1a2a3a });
+const earth = new THREE.Mesh(earthGeometry, placeholderMaterial);
 earthSpin.add(earth);
+
+// Asynchronously load the shader material and swap it in.
+let setEarthSunDirection = null;
+buildEarthMaterial(earth).then(({ material, setSunDirection }) => {
+    earth.material.dispose();
+    earth.material = material;
+    setEarthSunDirection = setSunDirection;
+    console.log('Earth textures loaded — shader material active.');
+}).catch((err) => {
+    console.error('Failed to load Earth textures:', err);
+});
 
 // Lat/lon grid — meridians every 30°, parallels every 30°, equator and
 // prime meridian highlighted. Sits as a child of earthSpin so it rotates
@@ -177,6 +183,12 @@ function animate() {
     const now = new Date();
     const state = getEarthState(now);
     applyEarthSpin(state.rotationAngle);
+
+    // Feed world-space Sun direction into the Earth shader — the material
+    // handles the world→local transform internally.
+    if (setEarthSunDirection) {
+        setEarthSunDirection(state.sunDirection);
+    }
 
     hudRotation.textContent = state.rotationAngle.toFixed(3) + '°';
     hudTime.textContent = formatUTC(now);
