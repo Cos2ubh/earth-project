@@ -99,6 +99,12 @@ controls.dampingFactor = 0.06;
 controls.enablePan = false;
 controls.minDistance = 2;
 controls.maxDistance = 25;
+// Save the initial camera state so the recenter button can restore it.
+controls.saveState();
+
+document.getElementById('recenter-btn').addEventListener('click', () => {
+    controls.reset();
+});
 
 // --- Earth hierarchy ---------------------------------------------------------
 
