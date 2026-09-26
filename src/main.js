@@ -19,9 +19,15 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { getEarthState } from './astronomy.js';
 import { buildLatLonGrid } from './grid.js';
 import { buildEarthMaterial } from './earthMaterial.js';
+import { buildStars } from './stars.js';
+import { buildAtmosphere } from './atmosphere.js';
 
 const canvas = document.getElementById('canvas');
 const hudTilt = document.getElementById('hud-tilt');
@@ -94,6 +100,11 @@ buildEarthMaterial(earth).then(({ material, setSunDirection }) => {
 const latLonGrid = buildLatLonGrid();
 earthSpin.add(latLonGrid);
 
+// Atmosphere glow — slightly larger transparent shell around Earth,
+// child of earthGroup so it stays with Earth even under the axial tilt.
+const atmosphere = buildAtmosphere();
+earthGroup.add(atmosphere);
+
 // Rotation axis — sits in the tilted frame, doesn't spin.
 const axisPoints = [
     new THREE.Vector3(0, -1.35, 0),
@@ -152,6 +163,34 @@ const moonMaterial = new THREE.MeshStandardMaterial({
 });
 const moon = new THREE.Mesh(moonGeometry, moonMaterial);
 scene.add(moon);
+
+// --- Stars -------------------------------------------------------------------
+const stars = buildStars();
+scene.add(stars);
+
+// --- Post-processing: bloom --------------------------------------------------
+// Bright pixels (Sun marker, city lights on Earth's night side) glow softly.
+// EffectComposer replaces the direct renderer.render() call in the loop.
+
+const composer = new EffectComposer(renderer);
+composer.setSize(window.innerWidth, window.innerHeight);
+composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const renderPass = new RenderPass(scene, camera);
+composer.addPass(renderPass);
+
+const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    0.6,   // strength
+    0.5,   // radius
+    0.85,  // threshold — only pixels above this brightness bloom
+);
+composer.addPass(bloomPass);
+
+// OutputPass handles tone mapping + color space conversion cleanly at the end
+// of the chain — without it, colors can look washed out after bloom.
+const outputPass = new OutputPass();
+composer.addPass(outputPass);
 
 // --- Apply orientations ------------------------------------------------------
 
@@ -216,6 +255,8 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
+    bloomPass.setSize(window.innerWidth, window.innerHeight);
 });
 
 // --- Render loop -------------------------------------------------------------
@@ -237,7 +278,7 @@ function animate() {
     hudTime.textContent = formatUTC(now);
 
     controls.update();
-    renderer.render(scene, camera);
+    composer.render();
 }
 
 animate();
