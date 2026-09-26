@@ -6,12 +6,23 @@
 //   Earth's rotation axis is tilted from +Y by the current obliquity,
 //   leaning toward +X. This is a fixed direction in world space —
 //   what changes over the year is the Sun's position around Earth.
+//
+// Scene graph:
+//   scene
+//     └─ earthGroup     ← holds the axial tilt (rotation.z)
+//          ├─ earthSpin ← rotates on local +Y at sidereal rate
+//          │    ├─ earth mesh
+//          │    ├─ wireframe overlay
+//          │    └─ prime-meridian marker (temporary, until textures land)
+//          └─ axisLine  ← doesn't spin; sits fixed in the tilted frame
 
 import * as THREE from 'three';
 import { getEarthState } from './astronomy.js';
 
 const canvas = document.getElementById('canvas');
 const hudTilt = document.getElementById('hud-tilt');
+const hudRotation = document.getElementById('hud-rotation');
+const hudTime = document.getElementById('hud-time');
 
 // --- Scene, camera, renderer -------------------------------------------------
 
@@ -34,19 +45,18 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-// --- Earth group -------------------------------------------------------------
-// Everything Earth-related lives inside earthGroup. Applying the axial tilt
-// to the group rotates the mesh, axis line, and eventually the lat/long grid
-// as one unit. Earth's diurnal spin (Phase 4) will be applied to a nested
-// child of this group so the tilt stays fixed in world space.
+// --- Earth hierarchy ---------------------------------------------------------
 
 const earthGroup = new THREE.Group();
 scene.add(earthGroup);
 
+const earthSpin = new THREE.Group();
+earthGroup.add(earthSpin);
+
 const earthGeometry = new THREE.SphereGeometry(1, 64, 64);
 const earthMaterial = new THREE.MeshBasicMaterial({ color: 0x4a6a8a });
 const earth = new THREE.Mesh(earthGeometry, earthMaterial);
-earthGroup.add(earth);
+earthSpin.add(earth);
 
 const wireframeMaterial = new THREE.MeshBasicMaterial({
     color: 0x2a4a6a,
@@ -55,11 +65,19 @@ const wireframeMaterial = new THREE.MeshBasicMaterial({
     opacity: 0.3,
 });
 const earthWireframe = new THREE.Mesh(earthGeometry, wireframeMaterial);
-earthGroup.add(earthWireframe);
+earthSpin.add(earthWireframe);
 
-// Rotation axis — thin white line through the poles, extended past the surface
-// so it's visible above and below Earth. Sits in the group's local frame so it
-// tilts with Earth automatically.
+// Temporary reference marker at "prime meridian, equator" so the rotation is
+// visible before textures land in Phase 7. Convention: prime meridian sits at
+// local +Z in the earthSpin frame. When textures arrive we align UVs to match.
+const markerGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff8c42 });
+const primeMeridianMarker = new THREE.Mesh(markerGeometry, markerMaterial);
+primeMeridianMarker.position.set(0, 0, 1.001); // just above the surface
+earthSpin.add(primeMeridianMarker);
+
+// Rotation axis — child of earthGroup, NOT earthSpin. The axis is what
+// Earth spins around; it doesn't rotate itself.
 const axisPoints = [
     new THREE.Vector3(0, -1.35, 0),
     new THREE.Vector3(0, 1.35, 0),
@@ -74,25 +92,40 @@ const axisLine = new THREE.Line(axisGeometry, axisMaterial);
 earthGroup.add(axisLine);
 
 // --- Apply the axial tilt ----------------------------------------------------
-// Rotation around world +Z tips the local +Y axis (Earth's pole) toward +X.
-// The exact angle comes from astronomy.js — updated once per second below,
-// since obliquity changes so slowly it doesn't need to be recomputed per frame.
+// Recomputed once per second — obliquity changes on geologic timescales.
 
 function applyAxialTilt(tiltDegrees) {
     const tiltRad = THREE.MathUtils.degToRad(tiltDegrees);
     earthGroup.rotation.z = tiltRad;
 }
 
+// --- Apply the Earth spin ----------------------------------------------------
+// Recomputed every frame so the rotation reads smoothly. astronomy-engine
+// returns GAST as an angle in [0, 360) — the amount Earth has rotated relative
+// to the vernal equinox at Greenwich. We spin around the local +Y axis
+// (Earth's north pole in the tilted frame). Positive rotation makes Earth turn
+// eastward (west-to-east) — the correct real-world direction.
+
+function applyEarthSpin(rotationDegrees) {
+    earthSpin.rotation.y = THREE.MathUtils.degToRad(rotationDegrees);
+}
+
 // --- HUD update --------------------------------------------------------------
 
-function updateHud() {
+function formatUTC(date) {
+    // "2026-09-26 14:32:17 UTC"
+    const iso = date.toISOString();
+    return iso.slice(0, 10) + ' ' + iso.slice(11, 19) + ' UTC';
+}
+
+function updateSlow() {
     const state = getEarthState();
     applyAxialTilt(state.axialTilt);
     hudTilt.textContent = state.axialTilt.toFixed(4) + '°';
 }
 
-updateHud();
-setInterval(updateHud, 1000);
+updateSlow();
+setInterval(updateSlow, 1000);
 
 // --- Resize handling ---------------------------------------------------------
 
@@ -106,9 +139,19 @@ window.addEventListener('resize', () => {
 
 function animate() {
     requestAnimationFrame(animate);
+
+    // Per-frame updates: rotation angle + time display.
+    const now = new Date();
+    const state = getEarthState(now);
+    applyEarthSpin(state.rotationAngle);
+
+    // HUD numbers that need to look "live" every frame.
+    hudRotation.textContent = state.rotationAngle.toFixed(3) + '°';
+    hudTime.textContent = formatUTC(now);
+
     renderer.render(scene, camera);
 }
 
 animate();
 
-console.log('Earth Project — Phase 3 scene initialized');
+console.log('Earth Project — Phase 4 scene initialized');
