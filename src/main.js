@@ -167,14 +167,21 @@ scene.add(sunMarker);
 // its day/night terminator, no extra shader needed.
 
 const MOON_SCENE_DISTANCE = 5;
-const moonGeometry = new THREE.SphereGeometry(0.15, 48, 48);
+const moonGeometry = new THREE.SphereGeometry(0.15, 64, 64);
 const moonMaterial = new THREE.MeshStandardMaterial({
-    color: 0xcccccc,
-    roughness: 1,
+    color: 0xffffff,
+    roughness: 0.95, // slight variation so craters catch grazing highlights
     metalness: 0,
 });
 const moon = new THREE.Mesh(moonGeometry, moonMaterial);
 scene.add(moon);
+
+// Load moon texture asynchronously; assigns to the existing material once ready.
+new THREE.TextureLoader().load('/textures/moon_2k.jpg', (tex) => {
+    tex.colorSpace = THREE.SRGBColorSpace;
+    moonMaterial.map = tex;
+    moonMaterial.needsUpdate = true;
+});
 
 // --- Stars -------------------------------------------------------------------
 const stars = buildStars();
