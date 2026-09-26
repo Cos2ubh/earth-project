@@ -1,68 +1,117 @@
-// Procedural star field. 5000 points uniformly distributed on a large distant
-// sphere. Colors weighted toward white with subtle blue/yellow tints to hint at
-// real stellar temperatures. Additive blending so stars look luminous against
-// the black background.
+// Real star field from the Yale Bright Star Catalog (~9,000 stars, all visible
+// naked-eye stars mag ≤ ~6.5). Positions are J2000 equatorial (RA/Dec), which
+// we convert into the scene's ecliptic frame — the same coordinate system Earth
+// and Sun live in — so constellations sit in the sky where they actually do.
 //
-// Not real Yale Bright Star Catalog positions (would need an asset download).
-// Visually convincing for a portfolio piece; can be swapped later.
+// Size = f(magnitude), color = f(spectral type) so hot O/B stars read blue,
+// cool M stars read red — the same way real stars look in a long exposure.
 
 import * as THREE from 'three';
 
-const STAR_COUNT = 5000;
 const STAR_SPHERE_RADIUS = 300;
+const OBLIQUITY_DEG = 23.4381;
 
-// Slightly randomized color per star, biased toward pure white with rare
-// pale-blue (hotter stars) and pale-yellow (cooler stars) tints.
-function pickStarColor(rand) {
-    const t = rand();
-    if (t < 0.7) return new THREE.Color(0xffffff);
-    if (t < 0.85) return new THREE.Color(0xdde6ff); // pale blue
-    return new THREE.Color(0xfff2cc); // pale yellow
+// Spectral class → approximate color. Maps the first letter of the spectral
+// type (O, B, A, F, G, K, M) to a representative RGB color.
+const SPECTRAL_COLORS = {
+    O: new THREE.Color(0x9bb0ff), // blue
+    B: new THREE.Color(0xaabfff),
+    A: new THREE.Color(0xcad7ff), // white
+    F: new THREE.Color(0xf8f7ff), // yellow-white
+    G: new THREE.Color(0xfff4ea), // yellow (Sun-like)
+    K: new THREE.Color(0xffd2a1), // orange
+    M: new THREE.Color(0xffcc6f), // red-orange
+};
+const DEFAULT_COLOR = new THREE.Color(0xffffff);
+
+// "HH:MM:SS.SS" → hours (float)
+function parseRaHours(s) {
+    const [h, m, sec] = s.split(':').map(parseFloat);
+    return h + m / 60 + sec / 3600;
 }
 
-// Uniform random point on a unit sphere via Marsaglia's method.
-function randomPointOnSphere(rand) {
-    let u, v, s;
-    do {
-        u = rand() * 2 - 1;
-        v = rand() * 2 - 1;
-        s = u * u + v * v;
-    } while (s >= 1);
-    const factor = 2 * Math.sqrt(1 - s);
+// "±DD:MM:SS.SS" → degrees (signed float)
+function parseDecDegrees(s) {
+    const sign = s.trim()[0] === '-' ? -1 : 1;
+    const cleaned = s.replace(/^[+-]/, '');
+    const [d, m, sec] = cleaned.split(':').map(parseFloat);
+    return sign * (d + m / 60 + sec / 3600);
+}
+
+// Extract first alphabetic character from spectral type strings like "K0III",
+// "gG9", "A1Vn", "M1.5V" — used for color lookup.
+function firstSpectralLetter(spectralType) {
+    if (!spectralType) return null;
+    const m = spectralType.match(/[OBAFGKM]/i);
+    return m ? m[0].toUpperCase() : null;
+}
+
+/**
+ * Convert equatorial (RA, Dec) unit vector → scene ecliptic frame:
+ *   scene +Y = ecliptic north
+ *   scene +X = vernal equinox
+ *   scene +Z = 90° east on ecliptic plane
+ */
+function equatorialToScene(raRad, decDeg, radius) {
+    const decRad = decDeg * Math.PI / 180;
+    const cosDec = Math.cos(decRad);
+    // J2000 equatorial cartesian
+    const xEq = cosDec * Math.cos(raRad);
+    const yEq = cosDec * Math.sin(raRad);
+    const zEq = Math.sin(decRad);
+    // Rotate around +X by -obliquity, then swap Y↔Z to match scene convention.
+    const obl = OBLIQUITY_DEG * Math.PI / 180;
+    const cosO = Math.cos(obl);
+    const sinO = Math.sin(obl);
+    const yEcl = yEq * cosO + zEq * sinO;
+    const zEcl = -yEq * sinO + zEq * cosO;
+    // Scene axes: our +Y = ecliptic north (was zEcl above); our +Z = perpendicular.
     return {
-        x: u * factor,
-        y: v * factor,
-        z: 1 - 2 * s,
+        x: xEq * radius,
+        y: zEcl * radius,
+        z: yEcl * radius,
     };
 }
 
-export function buildStars() {
-    const positions = new Float32Array(STAR_COUNT * 3);
-    const colors = new Float32Array(STAR_COUNT * 3);
-    const sizes = new Float32Array(STAR_COUNT);
+/**
+ * Load BSC JSON, build a Points geometry with real positions/sizes/colors.
+ */
+export async function buildStars() {
+    const response = await fetch('/data/bsc.json');
+    const stars = await response.json();
 
-    // Deterministic-ish seed so the star pattern is stable across reloads.
-    let seed = 42;
-    const rand = () => {
-        // Cheap LCG — fine for visual variety.
-        seed = (seed * 9301 + 49297) % 233280;
-        return seed / 233280;
-    };
+    // Filter out stars we can't place (missing RA/Dec) and dim-beyond-plot stars.
+    const usable = stars.filter((s) => {
+        if (!s.RA || !s.DEC) return false;
+        const mag = parseFloat(s.MAG);
+        return Number.isFinite(mag) && mag <= 7.5;
+    });
 
-    for (let i = 0; i < STAR_COUNT; i++) {
-        const p = randomPointOnSphere(rand);
-        positions[i * 3 + 0] = p.x * STAR_SPHERE_RADIUS;
-        positions[i * 3 + 1] = p.y * STAR_SPHERE_RADIUS;
-        positions[i * 3 + 2] = p.z * STAR_SPHERE_RADIUS;
+    const positions = new Float32Array(usable.length * 3);
+    const colors = new Float32Array(usable.length * 3);
+    const sizes = new Float32Array(usable.length);
 
-        const color = pickStarColor(rand);
+    for (let i = 0; i < usable.length; i++) {
+        const s = usable[i];
+        const raRad = parseRaHours(s.RA) * 15 * Math.PI / 180;
+        const decDeg = parseDecDegrees(s.DEC);
+        const mag = parseFloat(s.MAG);
+
+        const pos = equatorialToScene(raRad, decDeg, STAR_SPHERE_RADIUS);
+        positions[i * 3 + 0] = pos.x;
+        positions[i * 3 + 1] = pos.y;
+        positions[i * 3 + 2] = pos.z;
+
+        const letter = firstSpectralLetter(s['Title HD']);
+        const color = (letter && SPECTRAL_COLORS[letter]) || DEFAULT_COLOR;
         colors[i * 3 + 0] = color.r;
         colors[i * 3 + 1] = color.g;
         colors[i * 3 + 2] = color.b;
 
-        // Long tail toward small — few bright stars, many dim.
-        const brightness = Math.pow(rand(), 3.5);
-        sizes[i] = 0.4 + brightness * 2.2;
+        // Size: brighter stars (lower mag) get bigger points, on a curve.
+        // Vega (mag 0) → ~3.2 px, mag 3 → ~1.4 px, mag 6.5 → ~0.3 px.
+        const brightness = Math.max(0, 6.5 - mag);
+        sizes[i] = 0.3 + Math.pow(brightness / 6.5, 1.4) * 3.0;
     }
 
     const geometry = new THREE.BufferGeometry();
@@ -70,8 +119,6 @@ export function buildStars() {
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-    // Custom point material — supports per-star size + color via attributes,
-    // renders each point as a soft round dot (not a hard square).
     const material = new THREE.ShaderMaterial({
         uniforms: {
             uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
@@ -93,11 +140,10 @@ export function buildStars() {
             varying vec3 vColor;
 
             void main() {
-                // Soft round dot — falls off toward the edge of gl_PointCoord.
                 vec2 c = gl_PointCoord - vec2(0.5);
                 float d = length(c);
                 if (d > 0.5) discard;
-                float alpha = smoothstep(0.5, 0.15, d);
+                float alpha = smoothstep(0.5, 0.05, d);
                 gl_FragColor = vec4(vColor, alpha);
             }
         `,
@@ -106,5 +152,6 @@ export function buildStars() {
         blending: THREE.AdditiveBlending,
     });
 
+    console.log(`Star field loaded: ${usable.length} stars from Yale BSC.`);
     return new THREE.Points(geometry, material);
 }

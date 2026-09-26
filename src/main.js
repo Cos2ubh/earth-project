@@ -357,9 +357,12 @@ new THREE.TextureLoader().load('/textures/moon_2k.jpg', (tex) => {
     moonMaterial.needsUpdate = true;
 });
 
-// --- Stars -------------------------------------------------------------------
-const stars = buildStars();
-scene.add(stars);
+// --- Stars (real Yale Bright Star Catalog) -----------------------------------
+buildStars().then((stars) => {
+    scene.add(stars);
+}).catch((err) => {
+    console.error('Failed to load star catalog:', err);
+});
 
 // --- Post-processing: bloom --------------------------------------------------
 // Bright pixels (Sun marker, city lights on Earth's night side) glow softly.
