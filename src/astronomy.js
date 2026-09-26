@@ -1,13 +1,15 @@
 // Astronomy wrapper — every number the visualization uses comes from here.
 // Backed by astronomy-engine (NASA JPL-accurate, arcsecond-level precision).
 //
+// This module is browser-safe (no Node built-ins). For CLI verification, see
+// scripts/verify-astronomy.js.
+//
 // Coordinate conventions used throughout:
 //   latitude  — degrees, +north / -south, range [-90, 90]
 //   longitude — degrees, +east / -west,  range [-180, 180]
 //   angles    — degrees unless otherwise noted
 
 import * as Astronomy from 'astronomy-engine';
-import { pathToFileURL } from 'node:url';
 
 /**
  * Earth's axial tilt (true obliquity of the ecliptic) at the given instant.
@@ -79,19 +81,4 @@ export function getEarthState(date = new Date()) {
         subsolarPoint: getSubsolarPoint(date),
         rotationAngle: getEarthRotationAngle(date),
     };
-}
-
-// If run directly with `node src/astronomy.js`, log current values for verification.
-// Cross-check against timeanddate.com/worldclock/sunearth.html
-const isMainModule =
-    process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (isMainModule) {
-    const state = getEarthState();
-    console.log('Earth state @', state.timestamp);
-    console.log('  Axial tilt        :', state.axialTilt.toFixed(4), '°');
-    console.log('  Subsolar latitude :', state.subsolarPoint.latitude.toFixed(4), '° (+N/-S)');
-    console.log('  Subsolar longitude:', state.subsolarPoint.longitude.toFixed(4), '° (+E/-W)');
-    console.log('  Rotation angle    :', state.rotationAngle.toFixed(4), '° (GAST as angle)');
-    console.log('');
-    console.log('Verify at: https://www.timeanddate.com/worldclock/sunearth.html');
 }
