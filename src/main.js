@@ -26,6 +26,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { getEarthState } from './astronomy.js';
 import { buildLatLonGrid } from './grid.js';
 import { buildEarthMaterial } from './earthMaterial.js';
+import { buildClouds } from './clouds.js';
 import { buildStars } from './stars.js';
 import { buildAtmosphere } from './atmosphere.js';
 
@@ -103,6 +104,19 @@ buildEarthMaterial(earth).then(({ material, setSunDirection }) => {
     console.log('Earth textures loaded — shader material active.');
 }).catch((err) => {
     console.error('Failed to load Earth textures:', err);
+});
+
+// Cloud layer — asynchronously loaded, added to earthSpin so it stays tied
+// to Earth's tilt but rotates independently on its own +Y (see clouds.js).
+let setCloudSunDirection = null;
+let tickClouds = null;
+buildClouds().then(({ mesh, setSunDirection, tick }) => {
+    earthSpin.add(mesh);
+    setCloudSunDirection = setSunDirection;
+    tickClouds = tick;
+    console.log('Cloud layer loaded.');
+}).catch((err) => {
+    console.error('Failed to load cloud texture:', err);
 });
 
 // Lat/lon grid — meridians every 30°, parallels every 30°, equator and
@@ -282,18 +296,24 @@ window.addEventListener('resize', () => {
 
 // --- Render loop -------------------------------------------------------------
 
+let lastFrameMs = performance.now();
+
 function animate() {
     requestAnimationFrame(animate);
+
+    const nowMs = performance.now();
+    const dtSec = (nowMs - lastFrameMs) / 1000;
+    lastFrameMs = nowMs;
 
     const now = new Date();
     const state = getEarthState(now);
     applyEarthSpin(state.rotationAngle);
 
-    // Feed world-space Sun direction into the Earth shader — the material
-    // handles the world→local transform internally.
-    if (setEarthSunDirection) {
-        setEarthSunDirection(state.sunDirection);
-    }
+    // Feed world-space Sun direction into the Earth + cloud shaders.
+    // Each handles the world→local transform internally.
+    if (setEarthSunDirection) setEarthSunDirection(state.sunDirection);
+    if (setCloudSunDirection) setCloudSunDirection(state.sunDirection);
+    if (tickClouds) tickClouds(dtSec);
 
     hudRotation.textContent = state.rotationAngle.toFixed(3) + '°';
     hudTime.textContent = formatUTC(now);
