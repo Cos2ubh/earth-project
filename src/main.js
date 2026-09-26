@@ -29,6 +29,7 @@ import { buildEarthMaterial } from './earthMaterial.js';
 import { buildClouds } from './clouds.js';
 import { buildStars } from './stars.js';
 import { buildAtmosphere } from './atmosphere.js';
+import { buildMoonOrbit, updateMoonOrbit } from './moonOrbit.js';
 import { shouldAutoUpgrade, upgradeToHighRes } from './textureUpgrade.js';
 import {
     getSimulatedTime,
@@ -350,6 +351,12 @@ scene.add(moon);
 // Register the moon material with the HD-upgrade path (declared earlier).
 materialRefs.moonMaterial = moonMaterial;
 
+// Moon orbit ring — thin traced path showing where the Moon travels around
+// Earth over one sidereal month. Uses the same astronomy engine so the 5.14°
+// inclination and orbital plane orientation are exact.
+const moonOrbit = buildMoonOrbit(MOON_SCENE_DISTANCE);
+scene.add(moonOrbit);
+
 // Load moon texture asynchronously; assigns to the existing material once ready.
 new THREE.TextureLoader().load('/textures/moon_2k.jpg', (tex) => {
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -431,12 +438,20 @@ function applyMoonState(moonState) {
 }
 
 // Slow updates: values that change over minutes / hours / days.
+let lastOrbitUpdateMs = 0;
 function updateSlow() {
     const now = getSimulatedTime();
     const state = getEarthState(now);
     applyAxialTilt(state.axialTilt);
     applySunDirection(state.sunDirection);
     applyMoonState(state.moon);
+    // Refresh the moon orbit ring occasionally (every ~1 sim-hour) so it
+    // stays anchored around the current simulated time and shows the small
+    // orbital-plane drift when scrubbing.
+    if (Math.abs(now.getTime() - lastOrbitUpdateMs) > 3600 * 1000) {
+        updateMoonOrbit(moonOrbit, MOON_SCENE_DISTANCE, now);
+        lastOrbitUpdateMs = now.getTime();
+    }
     hudTilt.textContent = state.axialTilt.toFixed(4) + '°';
     hudSubLat.textContent = formatLat(state.subsolarPoint.latitude);
     hudSubLon.textContent = formatLon(state.subsolarPoint.longitude);
