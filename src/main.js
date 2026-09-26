@@ -29,6 +29,7 @@ import { buildEarthMaterial } from './earthMaterial.js';
 import { buildClouds } from './clouds.js';
 import { buildStars } from './stars.js';
 import { buildAtmosphere } from './atmosphere.js';
+import { shouldAutoUpgrade, upgradeToHighRes } from './textureUpgrade.js';
 
 const canvas = document.getElementById('canvas');
 const hudTilt = document.getElementById('hud-tilt');
@@ -95,13 +96,23 @@ const placeholderMaterial = new THREE.MeshBasicMaterial({ color: 0x1a2a3a });
 const earth = new THREE.Mesh(earthGeometry, placeholderMaterial);
 earthSpin.add(earth);
 
+// Track loaded materials so the progressive-upgrade path can swap textures.
+// moonMaterial is populated below once the Moon is created.
+const materialRefs = {
+    earthMaterial: null,
+    cloudMaterial: null,
+    moonMaterial: null,
+};
+
 // Asynchronously load the shader material and swap it in.
 let updateEarthShader = null;
 buildEarthMaterial(earth).then(({ material, updateShader }) => {
     earth.material.dispose();
     earth.material = material;
+    materialRefs.earthMaterial = material;
     updateEarthShader = updateShader;
     console.log('Earth textures loaded — shader material active.');
+    maybeStartHighResUpgrade();
 }).catch((err) => {
     console.error('Failed to load Earth textures:', err);
 });
@@ -112,12 +123,56 @@ let setCloudSunDirection = null;
 let tickClouds = null;
 buildClouds().then(({ mesh, setSunDirection, tick }) => {
     earthSpin.add(mesh);
+    materialRefs.cloudMaterial = mesh.material;
     setCloudSunDirection = setSunDirection;
     tickClouds = tick;
     console.log('Cloud layer loaded.');
+    maybeStartHighResUpgrade();
 }).catch((err) => {
     console.error('Failed to load cloud texture:', err);
 });
+
+// --- Progressive HD upgrade --------------------------------------------------
+// Kick off once all 2K materials are ready. Auto-triggers on capable devices;
+// manual override via the HD button in the UI.
+
+const hdButton = document.getElementById('hd-toggle');
+const hdStatus = document.getElementById('hd-status');
+let hdUpgradeStarted = false;
+
+function maybeStartHighResUpgrade() {
+    if (hdUpgradeStarted) return;
+    if (!materialRefs.earthMaterial || !materialRefs.cloudMaterial) return;
+    if (shouldAutoUpgrade()) {
+        startHighResUpgrade('auto');
+    }
+}
+
+function startHighResUpgrade(trigger) {
+    if (hdUpgradeStarted) return;
+    hdUpgradeStarted = true;
+    hdButton.setAttribute('data-loading', '1');
+    hdStatus.textContent = 'HD loading…';
+    console.log(`[HD] upgrade started (${trigger})`);
+
+    upgradeToHighRes(materialRefs, (which) => {
+        console.log('[HD] loaded:', which);
+    })
+        .then(() => {
+            hdButton.setAttribute('data-loaded', '1');
+            hdButton.removeAttribute('data-loading');
+            hdStatus.textContent = 'HD';
+            console.log('[HD] upgrade complete.');
+        })
+        .catch((err) => {
+            hdUpgradeStarted = false;
+            hdButton.removeAttribute('data-loading');
+            hdStatus.textContent = 'HD failed';
+            console.error('[HD] upgrade failed:', err);
+        });
+}
+
+hdButton.addEventListener('click', () => startHighResUpgrade('manual'));
 
 // Lat/lon grid — meridians every 30°, parallels every 30°, equator and
 // prime meridian highlighted. Sits as a child of earthSpin so it rotates
@@ -189,6 +244,9 @@ const moonMaterial = new THREE.MeshStandardMaterial({
 });
 const moon = new THREE.Mesh(moonGeometry, moonMaterial);
 scene.add(moon);
+
+// Register the moon material with the HD-upgrade path (declared earlier).
+materialRefs.moonMaterial = moonMaterial;
 
 // Load moon texture asynchronously; assigns to the existing material once ready.
 new THREE.TextureLoader().load('/textures/moon_2k.jpg', (tex) => {
