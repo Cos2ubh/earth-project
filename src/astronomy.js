@@ -71,6 +71,39 @@ export function getEarthRotationAngle(date = new Date()) {
 }
 
 /**
+ * Sun's apparent ecliptic longitude at the given instant, in degrees [0, 360).
+ * Reference points:
+ *   0°   — vernal equinox   (~March 20)
+ *   90°  — summer solstice  (~June 21)
+ *   180° — autumnal equinox (~Sept 23)
+ *   270° — winter solstice  (~Dec 21)
+ * The Sun's ecliptic latitude is essentially zero (< 0.001°), ignored here.
+ */
+export function getSunEclipticLongitude(date = new Date()) {
+    const sun = Astronomy.SunPosition(date);
+    return sun.elon;
+}
+
+/**
+ * Unit vector from Earth toward the Sun, in the scene's ecliptic frame.
+ *
+ * Scene convention (locked in Phase 3):
+ *   +Y = ecliptic north (perpendicular to Earth's orbital plane)
+ *   +X = vernal equinox direction
+ *   Ecliptic longitude λ measured counterclockwise around +Y from +X
+ *
+ * Returned as { x, y, z } with x² + y² + z² = 1.
+ */
+export function getSunDirection(date = new Date()) {
+    const lambda = getSunEclipticLongitude(date) * (Math.PI / 180);
+    return {
+        x: Math.cos(lambda),
+        y: 0,
+        z: Math.sin(lambda),
+    };
+}
+
+/**
  * Convenience: everything at once, in a single object.
  * Cheaper than calling each function separately since it computes MakeTime once.
  */
@@ -80,5 +113,7 @@ export function getEarthState(date = new Date()) {
         axialTilt: getAxialTilt(date),
         subsolarPoint: getSubsolarPoint(date),
         rotationAngle: getEarthRotationAngle(date),
+        sunEclipticLongitude: getSunEclipticLongitude(date),
+        sunDirection: getSunDirection(date),
     };
 }

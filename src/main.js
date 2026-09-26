@@ -2,19 +2,20 @@
 //
 // Coordinate convention (locked in Phase 3):
 //   world +Y = ecliptic north (perpendicular to Earth's orbital plane)
-//   world +X, +Z lie in the ecliptic plane
-//   Earth's rotation axis is tilted from +Y by the current obliquity,
-//   leaning toward +X. This is a fixed direction in world space —
-//   what changes over the year is the Sun's position around Earth.
+//   world +X = vernal equinox direction
+//   Ecliptic longitude increases counterclockwise around +Y (viewed from above)
+//   Earth's rotation axis tilts from +Y toward +X by the current obliquity
 //
 // Scene graph:
 //   scene
-//     └─ earthGroup     ← holds the axial tilt (rotation.z)
-//          ├─ earthSpin ← rotates on local +Y at sidereal rate
-//          │    ├─ earth mesh
-//          │    ├─ wireframe overlay
-//          │    └─ prime-meridian marker (temporary, until textures land)
-//          └─ axisLine  ← doesn't spin; sits fixed in the tilted frame
+//     ├─ earthGroup       ← holds axial tilt (rotation.z)
+//     │    ├─ earthSpin   ← rotates on local +Y at sidereal rate
+//     │    │    ├─ earth mesh (Standard material, receives light)
+//     │    │    └─ prime-meridian marker (temporary, until textures land)
+//     │    └─ axisLine    ← fixed in tilted frame, doesn't spin
+//     ├─ sunLight         ← DirectionalLight at Sun's direction
+//     ├─ ambientLight     ← tiny fill so night side isn't pure black
+//     └─ sunMarker        ← visible sphere at sunDirection × distance
 
 import * as THREE from 'three';
 import { getEarthState } from './astronomy.js';
@@ -23,6 +24,7 @@ const canvas = document.getElementById('canvas');
 const hudTilt = document.getElementById('hud-tilt');
 const hudRotation = document.getElementById('hud-rotation');
 const hudTime = document.getElementById('hud-time');
+const hudSunLon = document.getElementById('hud-sun-lon');
 
 // --- Scene, camera, renderer -------------------------------------------------
 
@@ -53,31 +55,28 @@ scene.add(earthGroup);
 const earthSpin = new THREE.Group();
 earthGroup.add(earthSpin);
 
-const earthGeometry = new THREE.SphereGeometry(1, 64, 64);
-const earthMaterial = new THREE.MeshBasicMaterial({ color: 0x4a6a8a });
+const earthGeometry = new THREE.SphereGeometry(1, 96, 96);
+// MeshStandardMaterial responds to lighting (unlike MeshBasic).
+// roughness=1, metalness=0 gives a matte finish — appropriate for a
+// planet without textures. Once Phase 7 lands, this becomes a
+// ShaderMaterial that blends day + night textures across the terminator.
+const earthMaterial = new THREE.MeshStandardMaterial({
+    color: 0x2a5a8a,
+    roughness: 1,
+    metalness: 0,
+});
 const earth = new THREE.Mesh(earthGeometry, earthMaterial);
 earthSpin.add(earth);
 
-const wireframeMaterial = new THREE.MeshBasicMaterial({
-    color: 0x2a4a6a,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.3,
-});
-const earthWireframe = new THREE.Mesh(earthGeometry, wireframeMaterial);
-earthSpin.add(earthWireframe);
-
-// Temporary reference marker at "prime meridian, equator" so the rotation is
-// visible before textures land in Phase 7. Convention: prime meridian sits at
-// local +Z in the earthSpin frame. When textures arrive we align UVs to match.
+// Temporary reference marker at "prime meridian, equator". Emissive so it
+// glows on the night side too — needed until textures land in Phase 7.
 const markerGeometry = new THREE.SphereGeometry(0.04, 16, 16);
 const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff8c42 });
 const primeMeridianMarker = new THREE.Mesh(markerGeometry, markerMaterial);
-primeMeridianMarker.position.set(0, 0, 1.001); // just above the surface
+primeMeridianMarker.position.set(0, 0, 1.001);
 earthSpin.add(primeMeridianMarker);
 
-// Rotation axis — child of earthGroup, NOT earthSpin. The axis is what
-// Earth spins around; it doesn't rotate itself.
+// Rotation axis — sits in the tilted frame, doesn't spin.
 const axisPoints = [
     new THREE.Vector3(0, -1.35, 0),
     new THREE.Vector3(0, 1.35, 0),
@@ -91,37 +90,72 @@ const axisMaterial = new THREE.LineBasicMaterial({
 const axisLine = new THREE.Line(axisGeometry, axisMaterial);
 earthGroup.add(axisLine);
 
-// --- Apply the axial tilt ----------------------------------------------------
-// Recomputed once per second — obliquity changes on geologic timescales.
+// --- Lighting ----------------------------------------------------------------
+
+// Directional light from the Sun. Position gets updated every frame.
+// Intensity 3.0 keeps the day side well-lit against our near-black background.
+const sunLight = new THREE.DirectionalLight(0xffffff, 3.0);
+sunLight.position.set(1, 0, 0); // placeholder — overwritten each frame
+scene.add(sunLight);
+
+// A whisper of ambient so the night side isn't dead black — helps the sphere
+// read as a globe even at extreme phase angles. Keep this very low; the whole
+// point of the visualization is that the terminator is visible.
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.04);
+scene.add(ambientLight);
+
+// --- Sun marker --------------------------------------------------------------
+// A visible yellow sphere placed in the Sun's direction, at a distance chosen
+// for visual clarity — NOT to scale (per the disclaimer). Phase 9 will add
+// bloom for a proper glow.
+
+const sunMarkerDistance = 8;
+const sunMarkerGeometry = new THREE.SphereGeometry(0.35, 32, 32);
+const sunMarkerMaterial = new THREE.MeshBasicMaterial({ color: 0xffdd66 });
+const sunMarker = new THREE.Mesh(sunMarkerGeometry, sunMarkerMaterial);
+scene.add(sunMarker);
+
+// --- Apply orientations ------------------------------------------------------
 
 function applyAxialTilt(tiltDegrees) {
-    const tiltRad = THREE.MathUtils.degToRad(tiltDegrees);
-    earthGroup.rotation.z = tiltRad;
+    earthGroup.rotation.z = THREE.MathUtils.degToRad(tiltDegrees);
 }
-
-// --- Apply the Earth spin ----------------------------------------------------
-// Recomputed every frame so the rotation reads smoothly. astronomy-engine
-// returns GAST as an angle in [0, 360) — the amount Earth has rotated relative
-// to the vernal equinox at Greenwich. We spin around the local +Y axis
-// (Earth's north pole in the tilted frame). Positive rotation makes Earth turn
-// eastward (west-to-east) — the correct real-world direction.
 
 function applyEarthSpin(rotationDegrees) {
     earthSpin.rotation.y = THREE.MathUtils.degToRad(rotationDegrees);
 }
 
+function applySunDirection(sunDir) {
+    // Directional light: position sets the direction light comes FROM
+    // (light shines toward its target, default (0,0,0)).
+    sunLight.position.set(
+        sunDir.x * 10,
+        sunDir.y * 10,
+        sunDir.z * 10,
+    );
+
+    // Sun marker sits along the same direction, at a visible distance.
+    sunMarker.position.set(
+        sunDir.x * sunMarkerDistance,
+        sunDir.y * sunMarkerDistance,
+        sunDir.z * sunMarkerDistance,
+    );
+}
+
 // --- HUD update --------------------------------------------------------------
 
 function formatUTC(date) {
-    // "2026-09-26 14:32:17 UTC"
     const iso = date.toISOString();
     return iso.slice(0, 10) + ' ' + iso.slice(11, 19) + ' UTC';
 }
 
+// Slow updates: values that change over minutes / hours / days.
 function updateSlow() {
     const state = getEarthState();
     applyAxialTilt(state.axialTilt);
+    applySunDirection(state.sunDirection);
     hudTilt.textContent = state.axialTilt.toFixed(4) + '°';
+    hudSunLon.textContent = state.sunEclipticLongitude.toFixed(3) + '°';
 }
 
 updateSlow();
@@ -140,12 +174,10 @@ window.addEventListener('resize', () => {
 function animate() {
     requestAnimationFrame(animate);
 
-    // Per-frame updates: rotation angle + time display.
     const now = new Date();
     const state = getEarthState(now);
     applyEarthSpin(state.rotationAngle);
 
-    // HUD numbers that need to look "live" every frame.
     hudRotation.textContent = state.rotationAngle.toFixed(3) + '°';
     hudTime.textContent = formatUTC(now);
 
@@ -154,4 +186,4 @@ function animate() {
 
 animate();
 
-console.log('Earth Project — Phase 4 scene initialized');
+console.log('Earth Project — Phase 5 scene initialized');
