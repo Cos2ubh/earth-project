@@ -153,6 +153,34 @@ export function getMoonState(date = new Date()) {
 }
 
 /**
+ * Find the next solar and lunar eclipse after the given date.
+ *
+ * Returns:
+ *   solar: { peakDate: Date, kind: 'total'|'annular'|'partial', daysAway }
+ *   lunar: { peakDate: Date, kind: 'total'|'partial'|'penumbral', daysAway }
+ *
+ * Uses astronomy-engine's built-in eclipse search — accurate to seconds and
+ * agrees with NASA's published eclipse predictions.
+ */
+export function getNextEclipses(date = new Date()) {
+    const solar = Astronomy.SearchGlobalSolarEclipse(date);
+    const lunar = Astronomy.SearchLunarEclipse(date);
+
+    return {
+        solar: solar ? {
+            peakDate: solar.peak.date,
+            kind: solar.kind, // 'partial' | 'annular' | 'total' | 'hybrid'
+            daysAway: (solar.peak.date - date) / (86400 * 1000),
+        } : null,
+        lunar: lunar ? {
+            peakDate: lunar.peak.date,
+            kind: lunar.kind, // 'penumbral' | 'partial' | 'total'
+            daysAway: (lunar.peak.date - date) / (86400 * 1000),
+        } : null,
+    };
+}
+
+/**
  * Convenience: everything at once, in a single object.
  * Cheaper than calling each function separately since it computes MakeTime once.
  */

@@ -41,6 +41,7 @@ import {
     getSpeedMultiplier,
     jumpTo,
 } from './timeControl.js';
+import { getNextEclipses } from './astronomy.js';
 
 const canvas = document.getElementById('canvas');
 const hudTilt = document.getElementById('hud-tilt');
@@ -51,6 +52,8 @@ const hudSubLat = document.getElementById('hud-sub-lat');
 const hudSubLon = document.getElementById('hud-sub-lon');
 const hudMoonPhase = document.getElementById('hud-moon-phase');
 const hudMoonDist = document.getElementById('hud-moon-dist');
+const hudEclipseSolar = document.getElementById('hud-eclipse-solar');
+const hudEclipseLunar = document.getElementById('hud-eclipse-lunar');
 
 // Format a signed decimal degree as "12.34° N" / "12.34° S" etc.
 function formatLat(deg) {
@@ -459,6 +462,24 @@ function updateSlow() {
     hudMoonPhase.textContent = (state.moon.phaseFraction * 100).toFixed(1) + '%';
     hudMoonDist.textContent = Math.round(state.moon.distanceKm).toLocaleString() + ' km';
 }
+
+// Eclipse search is more expensive than the per-second state update, and the
+// answers only change once every ~2 weeks — recompute every 30 seconds.
+function formatEclipse(e) {
+    if (!e) return '—';
+    const iso = e.peakDate.toISOString().slice(0, 10);
+    const days = Math.abs(e.daysAway).toFixed(0);
+    return `${iso} · ${e.kind} · in ${days}d`;
+}
+
+function updateEclipses() {
+    const now = getSimulatedTime();
+    const eclipses = getNextEclipses(now);
+    hudEclipseSolar.textContent = formatEclipse(eclipses.solar);
+    hudEclipseLunar.textContent = formatEclipse(eclipses.lunar);
+}
+updateEclipses();
+setInterval(updateEclipses, 30_000);
 
 updateSlow();
 setInterval(updateSlow, 1000);
