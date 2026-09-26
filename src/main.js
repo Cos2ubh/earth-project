@@ -34,8 +34,20 @@ const hudTilt = document.getElementById('hud-tilt');
 const hudRotation = document.getElementById('hud-rotation');
 const hudTime = document.getElementById('hud-time');
 const hudSunLon = document.getElementById('hud-sun-lon');
+const hudSubLat = document.getElementById('hud-sub-lat');
+const hudSubLon = document.getElementById('hud-sub-lon');
 const hudMoonPhase = document.getElementById('hud-moon-phase');
 const hudMoonDist = document.getElementById('hud-moon-dist');
+
+// Format a signed decimal degree as "12.34° N" / "12.34° S" etc.
+function formatLat(deg) {
+    const sign = deg >= 0 ? 'N' : 'S';
+    return Math.abs(deg).toFixed(3) + '° ' + sign;
+}
+function formatLon(deg) {
+    const sign = deg >= 0 ? 'E' : 'W';
+    return Math.abs(deg).toFixed(3) + '° ' + sign;
+}
 
 // --- Scene, camera, renderer -------------------------------------------------
 
@@ -241,6 +253,8 @@ function updateSlow() {
     applySunDirection(state.sunDirection);
     applyMoonState(state.moon);
     hudTilt.textContent = state.axialTilt.toFixed(4) + '°';
+    hudSubLat.textContent = formatLat(state.subsolarPoint.latitude);
+    hudSubLon.textContent = formatLon(state.subsolarPoint.longitude);
     hudSunLon.textContent = state.sunEclipticLongitude.toFixed(3) + '°';
     hudMoonPhase.textContent = (state.moon.phaseFraction * 100).toFixed(1) + '%';
     hudMoonDist.textContent = Math.round(state.moon.distanceKm).toLocaleString() + ' km';
