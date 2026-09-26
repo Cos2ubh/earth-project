@@ -30,6 +30,7 @@ import { buildClouds } from './clouds.js';
 import { buildStars } from './stars.js';
 import { buildAtmosphere } from './atmosphere.js';
 import { buildMoonOrbit, updateMoonOrbit } from './moonOrbit.js';
+import { buildLocationPin } from './locationPin.js';
 import { shouldAutoUpgrade, upgradeToHighRes } from './textureUpgrade.js';
 import {
     getSimulatedTime,
@@ -54,6 +55,10 @@ const hudMoonPhase = document.getElementById('hud-moon-phase');
 const hudMoonDist = document.getElementById('hud-moon-dist');
 const hudEclipseSolar = document.getElementById('hud-eclipse-solar');
 const hudEclipseLunar = document.getElementById('hud-eclipse-lunar');
+const hudYouSection = document.getElementById('hud-you');
+const hudYouCoord = document.getElementById('hud-you-coord');
+const hudYouLocalTime = document.getElementById('hud-you-local-time');
+const hudYouSeason = document.getElementById('hud-you-season');
 
 // Format a signed decimal degree as "12.34° N" / "12.34° S" etc.
 function formatLat(deg) {
@@ -279,6 +284,79 @@ setInterval(() => {
     if (getMode() !== 'paused') syncSliderFromSimulatedTime();
     updateScrubLabel();
 }, 200);
+
+// --- Location pin + You section ---------------------------------------------
+
+const locateBtn = document.getElementById('locate-btn');
+let userLocation = null;  // { lat, lon }
+let locationPin = null;
+
+function seasonFor(sunEclipticLon, latitude) {
+    // Astronomical seasons in the northern hemisphere:
+    //   λ ∈ [ 0°, 90°) — spring
+    //   λ ∈ [90°, 180°) — summer
+    //   λ ∈ [180°, 270°) — autumn
+    //   λ ∈ [270°, 360°) — winter
+    // Southern hemisphere: swap summer↔winter and spring↔autumn.
+    const northern = latitude >= 0;
+    const λ = ((sunEclipticLon % 360) + 360) % 360;
+    if (λ < 90) return northern ? 'spring' : 'autumn';
+    if (λ < 180) return northern ? 'summer' : 'winter';
+    if (λ < 270) return northern ? 'autumn' : 'spring';
+    return northern ? 'winter' : 'summer';
+}
+
+function localSolarTime(date, longitudeDeg) {
+    // Mean local solar time: UTC + longitude/15 hours.
+    // Doesn't include the equation of time (up to ±16 min), which is fine
+    // for a HUD readout — accurate to within a quarter hour of true solar noon.
+    const utcHours = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
+    let lst = utcHours + longitudeDeg / 15;
+    lst = ((lst % 24) + 24) % 24;
+    const h = Math.floor(lst);
+    const m = Math.floor((lst - h) * 60);
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} solar`;
+}
+
+function updateYouSection() {
+    if (!userLocation) return;
+    const now = getSimulatedTime();
+    const eclipticLon = getEarthState(now).sunEclipticLongitude;
+    hudYouLocalTime.textContent = localSolarTime(now, userLocation.lon);
+    hudYouSeason.textContent = seasonFor(eclipticLon, userLocation.lat);
+}
+
+locateBtn.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+        locateBtn.textContent = 'no geo';
+        return;
+    }
+    locateBtn.setAttribute('data-loading', '1');
+    locateBtn.textContent = 'locating…';
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+            locationPin = buildLocationPin(userLocation.lat, userLocation.lon);
+            earthSpin.add(locationPin);
+            hudYouSection.style.display = '';
+            hudYouCoord.textContent =
+                `${Math.abs(userLocation.lat).toFixed(2)}° ${userLocation.lat >= 0 ? 'N' : 'S'} · ` +
+                `${Math.abs(userLocation.lon).toFixed(2)}° ${userLocation.lon >= 0 ? 'E' : 'W'}`;
+            locateBtn.removeAttribute('data-loading');
+            locateBtn.setAttribute('data-active', '1');
+            locateBtn.textContent = 'located';
+            updateYouSection();
+        },
+        (err) => {
+            locateBtn.removeAttribute('data-loading');
+            locateBtn.textContent = 'denied';
+            console.warn('Geolocation denied:', err.message);
+        },
+        { timeout: 10_000, maximumAge: 600_000 },
+    );
+});
+
+setInterval(updateYouSection, 1000);
 
 // Lat/lon grid — meridians every 30°, parallels every 30°, equator and
 // prime meridian highlighted. Sits as a child of earthSpin so it rotates

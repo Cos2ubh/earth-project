@@ -248,6 +248,36 @@
                 border-color: rgba(74, 212, 200, 0.5);
                 cursor: default;
             }
+            #locate-btn {
+                background: rgba(0, 0, 0, 0.42);
+                backdrop-filter: blur(14px) saturate(140%);
+                -webkit-backdrop-filter: blur(14px) saturate(140%);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 6px;
+                padding: 6px 12px;
+                color: rgba(255, 255, 255, 0.75);
+                font: inherit;
+                font-size: 10.5px;
+                font-weight: 600;
+                letter-spacing: 0.16em;
+                text-transform: uppercase;
+                cursor: pointer;
+                transition: color 0.2s, border-color 0.2s;
+            }
+            #locate-btn:hover {
+                color: rgba(255, 255, 255, 1);
+                border-color: rgba(255, 255, 255, 0.25);
+            }
+            #locate-btn[data-loading] {
+                color: rgba(74, 212, 200, 0.8);
+                border-color: rgba(74, 212, 200, 0.4);
+                cursor: wait;
+            }
+            #locate-btn[data-active] {
+                color: rgba(74, 212, 200, 0.95);
+                border-color: rgba(74, 212, 200, 0.5);
+                cursor: default;
+            }
         </style>
     </head>
     <body>
@@ -275,6 +305,12 @@
                 <div class="row"><span class="k">Solar</span><span class="v dim" id="hud-eclipse-solar">—</span></div>
                 <div class="row"><span class="k">Lunar</span><span class="v dim" id="hud-eclipse-lunar">—</span></div>
             </section>
+            <section id="hud-you" style="display:none">
+                <h2>You</h2>
+                <div class="row"><span class="k">Location</span><span class="v" id="hud-you-coord">—</span></div>
+                <div class="row"><span class="k">Local time</span><span class="v" id="hud-you-local-time">—</span></div>
+                <div class="row"><span class="k">Season</span><span class="v" id="hud-you-season">—</span></div>
+            </section>
             <section>
                 <h2>Time</h2>
                 <div class="row"><span class="v" id="hud-time" style="text-align:left; width:100%;">—</span></div>
@@ -285,6 +321,7 @@
             <button id="hd-toggle" type="button" title="Upgrade to 8K textures">
                 <span id="hd-status">HD</span>
             </button>
+            <button id="locate-btn" type="button" title="Pin your location on Earth">locate me</button>
             <div id="hint">Drag to orbit · scroll to zoom</div>
         </div>
 
