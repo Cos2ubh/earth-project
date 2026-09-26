@@ -19,6 +19,7 @@
 
 import * as THREE from 'three';
 import { getEarthState } from './astronomy.js';
+import { buildLatLonGrid } from './grid.js';
 
 const canvas = document.getElementById('canvas');
 const hudTilt = document.getElementById('hud-tilt');
@@ -68,13 +69,12 @@ const earthMaterial = new THREE.MeshStandardMaterial({
 const earth = new THREE.Mesh(earthGeometry, earthMaterial);
 earthSpin.add(earth);
 
-// Temporary reference marker at "prime meridian, equator". Emissive so it
-// glows on the night side too — needed until textures land in Phase 7.
-const markerGeometry = new THREE.SphereGeometry(0.04, 16, 16);
-const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff8c42 });
-const primeMeridianMarker = new THREE.Mesh(markerGeometry, markerMaterial);
-primeMeridianMarker.position.set(0, 0, 1.001);
-earthSpin.add(primeMeridianMarker);
+// Lat/lon grid — meridians every 30°, parallels every 30°, equator and
+// prime meridian highlighted. Sits as a child of earthSpin so it rotates
+// with Earth. Replaces the Phase 4 prime-meridian marker (now redundant
+// since the prime meridian is drawn as a full amber line).
+const latLonGrid = buildLatLonGrid();
+earthSpin.add(latLonGrid);
 
 // Rotation axis — sits in the tilted frame, doesn't spin.
 const axisPoints = [
