@@ -30,6 +30,16 @@ import { buildClouds } from './clouds.js';
 import { buildStars } from './stars.js';
 import { buildAtmosphere } from './atmosphere.js';
 import { shouldAutoUpgrade, upgradeToHighRes } from './textureUpgrade.js';
+import {
+    getSimulatedTime,
+    setLive,
+    setPaused,
+    setScrubbing,
+    setSpeedMultiplier,
+    getMode,
+    getSpeedMultiplier,
+    jumpTo,
+} from './timeControl.js';
 
 const canvas = document.getElementById('canvas');
 const hudTilt = document.getElementById('hud-tilt');
@@ -173,6 +183,98 @@ function startHighResUpgrade(trigger) {
 }
 
 hdButton.addEventListener('click', () => startHighResUpgrade('manual'));
+
+// --- Time-scrub controls -----------------------------------------------------
+// Slider spans ± 180 days from "now at page load." Speed presets let you
+// watch a day, a month, or a year sweep past.
+
+const scrubSlider = document.getElementById('scrub-slider');
+const scrubLabel = document.getElementById('scrub-label');
+const playPauseBtn = document.getElementById('play-pause');
+const liveBtn = document.getElementById('live-btn');
+const speedButtons = document.querySelectorAll('.speed-btn');
+
+const pageLoadMs = Date.now();
+const SCRUB_RANGE_DAYS = 180;
+
+function msFromSliderValue(v) {
+    // v is [-1, 1]; map to ± SCRUB_RANGE_DAYS relative to page load
+    return pageLoadMs + v * SCRUB_RANGE_DAYS * 86400 * 1000;
+}
+
+function updateScrubLabel() {
+    const t = getSimulatedTime();
+    const iso = t.toISOString();
+    const mode = getMode();
+    const modeTag =
+        mode === 'live' ? 'LIVE' :
+        mode === 'paused' ? 'PAUSED' :
+        `× ${getSpeedMultiplier().toLocaleString()}`;
+    scrubLabel.textContent = `${iso.slice(0, 10)} ${iso.slice(11, 19)} UTC · ${modeTag}`;
+}
+
+function syncSliderFromSimulatedTime() {
+    const simMs = getSimulatedTime().getTime();
+    const v = (simMs - pageLoadMs) / (SCRUB_RANGE_DAYS * 86400 * 1000);
+    scrubSlider.value = String(Math.max(-1, Math.min(1, v)));
+}
+
+scrubSlider.addEventListener('input', () => {
+    const v = parseFloat(scrubSlider.value);
+    jumpTo(msFromSliderValue(v));
+    playPauseBtn.setAttribute('data-state', 'paused');
+    liveBtn.removeAttribute('data-active');
+    updateScrubLabel();
+});
+
+playPauseBtn.addEventListener('click', () => {
+    const mode = getMode();
+    if (mode === 'scrubbing') {
+        setPaused(getSimulatedTime());
+        playPauseBtn.setAttribute('data-state', 'paused');
+    } else {
+        // Resume scrubbing from current position at last-picked speed
+        const currentSpeed = parseInt(
+            document.querySelector('.speed-btn[data-active]')?.dataset.speed || '3600',
+            10,
+        );
+        setScrubbing(getSimulatedTime(), currentSpeed);
+        playPauseBtn.setAttribute('data-state', 'playing');
+        liveBtn.removeAttribute('data-active');
+    }
+});
+
+liveBtn.addEventListener('click', () => {
+    setLive();
+    liveBtn.setAttribute('data-active', '1');
+    playPauseBtn.setAttribute('data-state', 'paused');
+});
+
+speedButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+        speedButtons.forEach((b) => b.removeAttribute('data-active'));
+        btn.setAttribute('data-active', '1');
+        const speed = parseInt(btn.dataset.speed, 10);
+        if (getMode() === 'scrubbing') {
+            setSpeedMultiplier(speed);
+        } else {
+            setScrubbing(getSimulatedTime(), speed);
+            playPauseBtn.setAttribute('data-state', 'playing');
+            liveBtn.removeAttribute('data-active');
+        }
+    });
+});
+
+// Default states.
+liveBtn.setAttribute('data-active', '1');
+document.querySelector('.speed-btn[data-speed="3600"]').setAttribute('data-active', '1');
+playPauseBtn.setAttribute('data-state', 'paused');
+
+// Refresh the scrub UI on its own tick — every 200ms is plenty for reading.
+setInterval(() => {
+    if (getMode() !== 'paused') syncSliderFromSimulatedTime();
+    updateScrubLabel();
+}, 200);
 
 // Lat/lon grid — meridians every 30°, parallels every 30°, equator and
 // prime meridian highlighted. Sits as a child of earthSpin so it rotates
@@ -327,7 +429,8 @@ function applyMoonState(moonState) {
 
 // Slow updates: values that change over minutes / hours / days.
 function updateSlow() {
-    const state = getEarthState();
+    const now = getSimulatedTime();
+    const state = getEarthState(now);
     applyAxialTilt(state.axialTilt);
     applySunDirection(state.sunDirection);
     applyMoonState(state.moon);
@@ -363,9 +466,16 @@ function animate() {
     const dtSec = (nowMs - lastFrameMs) / 1000;
     lastFrameMs = nowMs;
 
-    const now = new Date();
+    const now = getSimulatedTime();
     const state = getEarthState(now);
     applyEarthSpin(state.rotationAngle);
+    // Slow updates need to fire every frame in scrubbing mode too, otherwise
+    // tilt/sun/moon lag behind while Earth spins fast. Cheap to recompute.
+    if (getMode() !== 'live') {
+        applyAxialTilt(state.axialTilt);
+        applySunDirection(state.sunDirection);
+        applyMoonState(state.moon);
+    }
 
     // Feed world-space Sun direction (and camera position for Earth's specular)
     // into the Earth + cloud shaders. Each handles world→local transforms.

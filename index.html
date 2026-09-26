@@ -93,6 +93,97 @@
                 justify-content: space-between;
                 gap: 20px;
             }
+            #scrub-bar {
+                position: fixed;
+                bottom: 46px;
+                left: 20px;
+                right: 20px;
+                background: rgba(0, 0, 0, 0.42);
+                backdrop-filter: blur(14px) saturate(140%);
+                -webkit-backdrop-filter: blur(14px) saturate(140%);
+                border: 1px solid rgba(255, 255, 255, 0.07);
+                border-radius: 8px;
+                padding: 12px 16px 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                max-width: 720px;
+                margin: 0 auto;
+            }
+            #scrub-controls {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            #scrub-bar button {
+                background: rgba(255, 255, 255, 0.06);
+                border: 1px solid rgba(255, 255, 255, 0.09);
+                border-radius: 5px;
+                padding: 5px 10px;
+                color: rgba(255, 255, 255, 0.72);
+                font: inherit;
+                font-size: 10.5px;
+                font-weight: 500;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+                cursor: pointer;
+                transition: all 0.15s;
+            }
+            #scrub-bar button:hover {
+                background: rgba(255, 255, 255, 0.12);
+                color: rgba(255, 255, 255, 1);
+            }
+            #scrub-bar button[data-active] {
+                background: rgba(74, 212, 200, 0.15);
+                border-color: rgba(74, 212, 200, 0.5);
+                color: rgba(74, 212, 200, 0.95);
+            }
+            #play-pause .pause-icon { display: none; font-size: 8px; letter-spacing: 1px; }
+            #play-pause[data-state="playing"] .play-icon { display: none; }
+            #play-pause[data-state="playing"] .pause-icon { display: inline; }
+            .speed-group {
+                display: flex;
+                gap: 4px;
+                margin-left: auto;
+            }
+            #scrub-slider {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 100%;
+                height: 3px;
+                background: rgba(255, 255, 255, 0.14);
+                border-radius: 2px;
+                outline: none;
+                cursor: pointer;
+            }
+            #scrub-slider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 14px;
+                height: 14px;
+                border-radius: 50%;
+                background: #4ad4c8;
+                border: 2px solid rgba(0, 0, 0, 0.4);
+                cursor: grab;
+                box-shadow: 0 0 8px rgba(74, 212, 200, 0.6);
+            }
+            #scrub-slider::-moz-range-thumb {
+                width: 14px;
+                height: 14px;
+                border-radius: 50%;
+                background: #4ad4c8;
+                border: 2px solid rgba(0, 0, 0, 0.4);
+                cursor: grab;
+                box-shadow: 0 0 8px rgba(74, 212, 200, 0.6);
+            }
+            #scrub-label {
+                font-size: 10.5px;
+                color: rgba(255, 255, 255, 0.55);
+                letter-spacing: 0.08em;
+                text-align: center;
+                font-variant-numeric: tabular-nums;
+            }
             #disclaimer .live::before {
                 content: '';
                 display: inline-block;
@@ -190,6 +281,24 @@
                 <span id="hd-status">HD</span>
             </button>
             <div id="hint">Drag to orbit · scroll to zoom</div>
+        </div>
+
+        <div id="scrub-bar">
+            <div id="scrub-controls">
+                <button id="live-btn" type="button" title="Return to real-time">LIVE</button>
+                <button id="play-pause" type="button" data-state="paused" title="Play / pause time scrubbing">
+                    <span class="play-icon">▶</span>
+                    <span class="pause-icon">❚❚</span>
+                </button>
+                <div class="speed-group">
+                    <button class="speed-btn" data-speed="60" title="1 min per second">1 min/s</button>
+                    <button class="speed-btn" data-speed="3600" title="1 hour per second">1 hr/s</button>
+                    <button class="speed-btn" data-speed="86400" title="1 day per second">1 day/s</button>
+                    <button class="speed-btn" data-speed="604800" title="1 week per second">1 wk/s</button>
+                </div>
+            </div>
+            <input id="scrub-slider" type="range" min="-1" max="1" step="0.0001" value="0" />
+            <div id="scrub-label">— · LIVE</div>
         </div>
 
         <div id="disclaimer">
