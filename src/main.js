@@ -31,6 +31,7 @@ import { buildStars } from './stars.js';
 import { buildAtmosphere } from './atmosphere.js';
 import { buildMoonOrbit, updateMoonOrbit } from './moonOrbit.js';
 import { buildLocationPin } from './locationPin.js';
+import { resolveQuery } from './search.js';
 import { shouldAutoUpgrade, upgradeToHighRes } from './textureUpgrade.js';
 import {
     getSimulatedTime,
@@ -381,6 +382,83 @@ locateBtn.addEventListener('click', () => {
 });
 
 setInterval(updateYouSection, 1000);
+
+// --- Search bar --------------------------------------------------------------
+
+const searchInput = document.getElementById('search-input');
+const searchResult = document.getElementById('search-result');
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+}
+
+function renderResultEvent(event, date) {
+    searchResult.innerHTML =
+        `<div><span class="r-title">${escapeHtml(event.name)}</span> · ` +
+        `<span class="r-date">${date.toISOString().slice(0, 10)} ${date.toISOString().slice(11, 16)} UTC</span></div>` +
+        `<div class="r-desc">${escapeHtml(event.description)}</div>`;
+    searchResult.setAttribute('data-visible', '1');
+}
+
+function renderResultDate(date, matchedText) {
+    searchResult.innerHTML =
+        `<div><span class="r-title">Jumped to</span> · ` +
+        `<span class="r-date">${date.toISOString().slice(0, 10)} ${date.toISOString().slice(11, 16)} UTC</span></div>` +
+        `<div class="r-desc">Parsed from “${escapeHtml(matchedText)}”</div>`;
+    searchResult.setAttribute('data-visible', '1');
+}
+
+function renderResultMiss(query) {
+    searchResult.innerHTML =
+        `<div class="r-miss">No match for “${escapeHtml(query)}” — try a specific date like ` +
+        `<em>August 29 2005</em> or a named event like <em>Apollo 11</em>.</div>`;
+    searchResult.setAttribute('data-visible', '1');
+}
+
+function performSearch(query) {
+    const result = resolveQuery(query, getSimulatedTime());
+    if (result.kind === 'event') {
+        jumpTo(result.date);
+        // Pause any scrubbing so the user stays on the event moment.
+        setPaused(result.date);
+        playPauseBtn.setAttribute('data-state', 'paused');
+        liveBtn.removeAttribute('data-active');
+        syncSliderFromSimulatedTime();
+        updateScrubLabel();
+        renderResultEvent(result.event, result.date);
+    } else if (result.kind === 'date') {
+        jumpTo(result.date);
+        setPaused(result.date);
+        playPauseBtn.setAttribute('data-state', 'paused');
+        liveBtn.removeAttribute('data-active');
+        syncSliderFromSimulatedTime();
+        updateScrubLabel();
+        renderResultDate(result.date, result.text);
+    } else {
+        renderResultMiss(query);
+    }
+}
+
+searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        performSearch(searchInput.value.trim());
+    } else if (e.key === 'Escape') {
+        searchInput.value = '';
+        searchResult.removeAttribute('data-visible');
+        searchInput.blur();
+    }
+});
+
+// Focus search on "/" like GitHub / Slack — small quality-of-life shortcut.
+window.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== searchInput) {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+    }
+});
 
 // Lat/lon grid — meridians every 30°, parallels every 30°, equator and
 // prime meridian highlighted. Sits as a child of earthSpin so it rotates

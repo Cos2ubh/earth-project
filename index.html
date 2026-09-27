@@ -209,6 +209,55 @@
                 align-items: flex-end;
                 gap: 10px;
             }
+            #search-bar {
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: min(560px, calc(100vw - 340px));
+                z-index: 10;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            #search-input {
+                width: 100%;
+                padding: 11px 16px;
+                background: rgba(0, 0, 0, 0.42);
+                backdrop-filter: blur(14px) saturate(140%);
+                -webkit-backdrop-filter: blur(14px) saturate(140%);
+                border: 1px solid rgba(255, 255, 255, 0.09);
+                border-radius: 8px;
+                color: rgba(255, 255, 255, 0.95);
+                font: inherit;
+                font-size: 13px;
+                letter-spacing: 0.01em;
+                outline: none;
+                transition: border-color 0.2s;
+            }
+            #search-input::placeholder {
+                color: rgba(255, 255, 255, 0.32);
+            }
+            #search-input:focus {
+                border-color: rgba(74, 212, 200, 0.5);
+            }
+            #search-result {
+                padding: 10px 16px;
+                background: rgba(0, 0, 0, 0.42);
+                backdrop-filter: blur(14px) saturate(140%);
+                -webkit-backdrop-filter: blur(14px) saturate(140%);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 8px;
+                font-size: 12px;
+                line-height: 1.5;
+                color: rgba(255, 255, 255, 0.85);
+                display: none;
+            }
+            #search-result[data-visible] { display: block; }
+            #search-result .r-title { color: rgba(255, 255, 255, 1); font-weight: 500; }
+            #search-result .r-date  { color: rgba(74, 212, 200, 0.95); font-variant-numeric: tabular-nums; }
+            #search-result .r-desc  { color: rgba(255, 255, 255, 0.55); font-size: 11.5px; margin-top: 4px; }
+            #search-result .r-miss  { color: rgba(255, 255, 255, 0.5); }
             #hint {
                 font-size: 10.5px;
                 color: rgba(255, 255, 255, 0.28);
@@ -302,6 +351,13 @@
     </head>
     <body>
         <canvas id="canvas"></canvas>
+
+        <div id="search-bar">
+            <input id="search-input" type="text"
+                   placeholder="Ask anything —  when did Katrina hit  ·  August 29 2005  ·  2 months ago"
+                   autocomplete="off" spellcheck="false" />
+            <div id="search-result"></div>
+        </div>
 
         <div id="hud">
             <section>
