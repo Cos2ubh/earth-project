@@ -32,6 +32,7 @@ import { buildAtmosphere } from './atmosphere.js';
 import { buildMoonOrbit, updateMoonOrbit } from './moonOrbit.js';
 import { buildLocationPin } from './locationPin.js';
 import { resolveQuery } from './search.js';
+import { fetchHistoricalEarthTexture, isDateInGibsRange } from './historicalTexture.js';
 import { shouldAutoUpgrade, upgradeToHighRes } from './textureUpgrade.js';
 import {
     getSimulatedTime,
@@ -144,14 +145,35 @@ const materialRefs = {
     earthMaterial: null,
     cloudMaterial: null,
     moonMaterial: null,
+    // Called by textureUpgrade when the 8K day texture is ready.
+    // Updates baseDayTexture, and only swaps the uniform if no historical
+    // GIBS overlay is active.
+    onEarthDayReady: (newTex) => {
+        const oldBase = baseDayTexture;
+        baseDayTexture = newTex;
+        if (!historicalDayTexture) {
+            materialRefs.earthMaterial.uniforms.uDayTexture.value = newTex;
+            materialRefs.earthMaterial.needsUpdate = true;
+        }
+        // Only dispose the old base if it isn't the currently-displayed uniform
+        // (edge case: user set historical then triggered HD before reset).
+        if (oldBase && oldBase !== materialRefs.earthMaterial.uniforms.uDayTexture.value) {
+            oldBase.dispose();
+        }
+    },
 };
 
 // Asynchronously load the shader material and swap it in.
+// Tracking baseDayTexture separately from the active uniform lets us layer
+// historical NASA GIBS imagery on top and pop back to base cleanly.
 let updateEarthShader = null;
+let baseDayTexture = null;         // reference to the current 2K or 8K base
+let historicalDayTexture = null;   // active GIBS image, if any
 buildEarthMaterial(earth).then(({ material, updateShader }) => {
     earth.material.dispose();
     earth.material = material;
     materialRefs.earthMaterial = material;
+    baseDayTexture = material.uniforms.uDayTexture.value;
     updateEarthShader = updateShader;
     console.log('Earth textures loaded — shader material active.');
     maybeStartHighResUpgrade();
@@ -417,17 +439,65 @@ function renderResultMiss(query) {
     searchResult.setAttribute('data-visible', '1');
 }
 
+function applyHistoricalImagery(date, resultRenderer) {
+    if (!materialRefs.earthMaterial || !isDateInGibsRange(date)) {
+        return; // Nothing to do (pre-satellite era or material not ready)
+    }
+    // Show loading state inline in the result panel.
+    resultRenderer.setStatus('Fetching MODIS imagery…');
+    fetchHistoricalEarthTexture(date).then(({ texture, dateStr }) => {
+        // Dispose any previous historical texture we swapped in.
+        if (historicalDayTexture) historicalDayTexture.dispose();
+        historicalDayTexture = texture;
+        materialRefs.earthMaterial.uniforms.uDayTexture.value = texture;
+        materialRefs.earthMaterial.needsUpdate = true;
+        resultRenderer.setStatus(`Showing MODIS imagery for ${dateStr}`, true);
+    }).catch((err) => {
+        console.warn('GIBS fetch failed:', err);
+        resultRenderer.setStatus('Historical imagery unavailable for this date.');
+    });
+}
+
+function resetHistoricalImagery() {
+    if (!historicalDayTexture || !materialRefs.earthMaterial) return;
+    materialRefs.earthMaterial.uniforms.uDayTexture.value = baseDayTexture;
+    materialRefs.earthMaterial.needsUpdate = true;
+    historicalDayTexture.dispose();
+    historicalDayTexture = null;
+}
+
 function performSearch(query) {
     const result = resolveQuery(query, getSimulatedTime());
+
+    // Reusable renderer for the search-result panel status line.
+    const statusRenderer = {
+        setStatus(text, showResetBtn = false) {
+            const existing = searchResult.querySelector('.r-imagery');
+            const btn = showResetBtn
+                ? ` <button class="r-reset" type="button">reset view</button>`
+                : '';
+            const html = `<div class="r-imagery">${escapeHtml(text)}${btn}</div>`;
+            if (existing) existing.outerHTML = html;
+            else searchResult.insertAdjacentHTML('beforeend', html);
+            if (showResetBtn) {
+                searchResult.querySelector('.r-reset').addEventListener('click', () => {
+                    resetHistoricalImagery();
+                    const el = searchResult.querySelector('.r-imagery');
+                    if (el) el.remove();
+                });
+            }
+        },
+    };
+
     if (result.kind === 'event') {
         jumpTo(result.date);
-        // Pause any scrubbing so the user stays on the event moment.
         setPaused(result.date);
         playPauseBtn.setAttribute('data-state', 'paused');
         liveBtn.removeAttribute('data-active');
         syncSliderFromSimulatedTime();
         updateScrubLabel();
         renderResultEvent(result.event, result.date);
+        applyHistoricalImagery(result.date, statusRenderer);
     } else if (result.kind === 'date') {
         jumpTo(result.date);
         setPaused(result.date);
@@ -436,6 +506,7 @@ function performSearch(query) {
         syncSliderFromSimulatedTime();
         updateScrubLabel();
         renderResultDate(result.date, result.text);
+        applyHistoricalImagery(result.date, statusRenderer);
     } else {
         renderResultMiss(query);
     }

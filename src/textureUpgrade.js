@@ -70,7 +70,14 @@ export async function upgradeToHighRes(refs, onProgress) {
     if (refs.earthMaterial) {
         tasks.push(
             loadTexture(HIGH_RES.earthDay, THREE.SRGBColorSpace).then((tex) => {
-                swapUniformTexture(refs.earthMaterial, 'uDayTexture', tex);
+                // Day texture might be temporarily overlaid by historical GIBS
+                // imagery. Let the caller decide whether to swap the uniform
+                // or just update its "base" reference.
+                if (refs.onEarthDayReady) {
+                    refs.onEarthDayReady(tex);
+                } else {
+                    swapUniformTexture(refs.earthMaterial, 'uDayTexture', tex);
+                }
                 onProgress?.('earth day');
             }),
             loadTexture(HIGH_RES.earthNight, THREE.SRGBColorSpace).then((tex) => {
