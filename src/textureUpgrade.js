@@ -7,6 +7,8 @@
 //   3. Skip auto-upgrade on data-saver connections and on narrow viewports
 //      (small screens don't benefit from 8K anyway).
 //   4. Allow manual override via the HD button in the UI.
+//   5. Each texture upgrades independently — one failing (bad network, CDN
+//      hiccup) doesn't block or revert the others. See upgradeToHighRes.
 
 import * as THREE from 'three';
 
@@ -63,13 +65,15 @@ function swapUniformTexture(material, uniformName, newTexture) {
 
 /**
  * Upgrade Earth + cloud + moon textures to 8K in the background.
- * Returns a Promise that resolves when all four have swapped in.
  *
- * refs: {
- *   earthMaterial: ShaderMaterial with uDayTexture, uNightTexture uniforms,
- *   cloudMaterial: ShaderMaterial with uCloudTexture uniform,
- *   moonMaterial:  MeshStandardMaterial with .map,
- * }
+ * Each of the (up to) four textures loads and swaps in independently — a
+ * failure on one (bad network, CDN hiccup on that single file) does not
+ * hold up or roll back the others. Previously this used Promise.all, which
+ * meant one failed fetch reported the *whole* upgrade as failed even when
+ * the rest had already swapped in successfully.
+ *
+ * Returns a summary: { succeeded: string[], failed: { name, error }[] }.
+ * onProgress(name) fires per-texture on success, same as before.
  */
 export async function upgradeToHighRes(refs, onProgress) {
     const tasks = [];
@@ -86,10 +90,12 @@ export async function upgradeToHighRes(refs, onProgress) {
                     swapUniformTexture(refs.earthMaterial, 'uDayTexture', tex);
                 }
                 onProgress?.('earth day');
+                return 'earth day';
             }),
             loadTexture(HIGH_RES.earthNight, THREE.SRGBColorSpace).then((tex) => {
                 swapUniformTexture(refs.earthMaterial, 'uNightTexture', tex);
                 onProgress?.('earth night');
+                return 'earth night';
             }),
         );
     }
@@ -99,6 +105,7 @@ export async function upgradeToHighRes(refs, onProgress) {
             loadTexture(HIGH_RES.clouds, THREE.SRGBColorSpace).then((tex) => {
                 swapUniformTexture(refs.cloudMaterial, 'uCloudTexture', tex);
                 onProgress?.('clouds');
+                return 'clouds';
             }),
         );
     }
@@ -111,9 +118,27 @@ export async function upgradeToHighRes(refs, onProgress) {
                 refs.moonMaterial.needsUpdate = true;
                 if (old) old.dispose();
                 onProgress?.('moon');
+                return 'moon';
             }),
         );
     }
 
-    await Promise.all(tasks);
+    // allSettled (not all): a rejected texture must not take the others down
+    // with it. Each task already carries its own name for reporting.
+    const names = ['earth day', 'earth night', 'clouds', 'moon'].filter((n) => {
+        if (n === 'earth day' || n === 'earth night') return !!refs.earthMaterial;
+        if (n === 'clouds') return !!refs.cloudMaterial;
+        if (n === 'moon') return !!refs.moonMaterial;
+        return false;
+    });
+    const results = await Promise.allSettled(tasks);
+
+    const succeeded = [];
+    const failed = [];
+    results.forEach((r, i) => {
+        if (r.status === 'fulfilled') succeeded.push(r.value);
+        else failed.push({ name: names[i], error: r.reason });
+    });
+
+    return { succeeded, failed };
 }

@@ -224,19 +224,26 @@ function startHighResUpgrade(trigger) {
 
     upgradeToHighRes(materialRefs, (which) => {
         console.log('[HD] loaded:', which);
-    })
-        .then(() => {
+    }).then(({ succeeded, failed }) => {
+        // Partial success is still success — only the textures that actually
+        // failed get retried; the ones that loaded stay loaded.
+        hdButton.removeAttribute('data-loading');
+        if (failed.length === 0) {
             hdButton.setAttribute('data-loaded', '1');
-            hdButton.removeAttribute('data-loading');
             hdStatus.textContent = 'HD';
             console.log('[HD] upgrade complete.');
-        })
-        .catch((err) => {
+        } else if (succeeded.length === 0) {
             hdUpgradeStarted = false;
-            hdButton.removeAttribute('data-loading');
             hdStatus.textContent = 'HD failed';
-            console.error('[HD] upgrade failed:', err);
-        });
+            console.error('[HD] upgrade failed — no textures loaded:', failed);
+        } else {
+            // Some textures upgraded, some didn't — allow retrying just the
+            // failed ones rather than reporting total failure.
+            hdUpgradeStarted = false;
+            hdStatus.textContent = `HD partial (${failed.length} failed)`;
+            console.warn('[HD] partial upgrade — failed:', failed.map((f) => f.name));
+        }
+    });
 }
 
 hdButton.addEventListener('click', () => startHighResUpgrade('manual'));
