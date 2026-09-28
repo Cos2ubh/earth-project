@@ -44,6 +44,7 @@ import {
     downloadDataUrl,
 } from './shareMoment.js';
 import { getActiveShower, buildMeteorShowerEffect } from './meteorShowers.js';
+import { buildAurora } from './aurora.js';
 import {
     getSimulatedTime,
     setLive,
@@ -691,6 +692,24 @@ const hudMeteorPeak = document.getElementById('hud-meteor-peak');
 const meteorEffect = buildMeteorShowerEffect();
 scene.add(meteorEffect.group);
 
+// --- Aurora ---------------------------------------------------------------
+// Polar glow bands sized/brightened by the real, live NOAA planetary Kp
+// index (see src/aurora.js). Child of earthSpin, not earthGroup — the
+// auroral oval is pinned to the geomagnetic pole, which turns with the
+// planet, so it needs to spin with the surface like the lat/lon grid does.
+const hudAuroraKp = document.getElementById('hud-aurora-kp');
+const hudAuroraLevel = document.getElementById('hud-aurora-level');
+const aurora = buildAurora();
+earthSpin.add(aurora.group);
+
+function updateAuroraHud() {
+    const { kp, label } = aurora.getState();
+    hudAuroraKp.textContent = kp.toFixed(2);
+    hudAuroraLevel.textContent = label;
+}
+updateAuroraHud();
+setInterval(updateAuroraHud, 5000);
+
 // --- Post-processing: bloom --------------------------------------------------
 // Bright pixels (Sun marker, city lights on Earth's night side) glow softly.
 // EffectComposer replaces the direct renderer.render() call in the loop.
@@ -924,6 +943,7 @@ function animate() {
     if (setCloudSunDirection) setCloudSunDirection(state.sunDirection);
     if (tickClouds) tickClouds(dtSec);
     meteorEffect.tick(dtSec, currentShowerInfo);
+    aurora.tick(dtSec);
 
     hudRotation.textContent = state.rotationAngle.toFixed(3) + '°';
     hudTime.textContent = formatUTC(now);
