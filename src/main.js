@@ -43,6 +43,7 @@ import {
     captureMomentImage,
     downloadDataUrl,
 } from './shareMoment.js';
+import { getActiveShower, buildMeteorShowerEffect } from './meteorShowers.js';
 import {
     getSimulatedTime,
     setLive,
@@ -681,6 +682,15 @@ buildStars().then((stars) => {
     console.error('Failed to load star catalog:', err);
 });
 
+// --- Meteor showers ------------------------------------------------------------
+// Stylized streaks near the radiant when the simulated date falls in a real
+// shower's active window (see src/meteorShowers.js for the accuracy caveats).
+const hudMeteorSection = document.getElementById('hud-meteor');
+const hudMeteorName = document.getElementById('hud-meteor-name');
+const hudMeteorPeak = document.getElementById('hud-meteor-peak');
+const meteorEffect = buildMeteorShowerEffect();
+scene.add(meteorEffect.group);
+
 // --- Post-processing: bloom --------------------------------------------------
 // Bright pixels (Sun marker, city lights on Earth's night side) glow softly.
 // EffectComposer replaces the direct renderer.render() call in the loop.
@@ -839,7 +849,21 @@ function updateSlow() {
     hudSunLon.textContent = state.sunEclipticLongitude.toFixed(3) + '°';
     hudMoonPhase.textContent = (state.moon.phaseFraction * 100).toFixed(1) + '%';
     hudMoonDist.textContent = Math.round(state.moon.distanceKm).toLocaleString() + ' km';
+
+    currentShowerInfo = getActiveShower(now);
+    if (currentShowerInfo) {
+        const { shower, daysFromPeak: diff } = currentShowerInfo;
+        hudMeteorSection.style.display = '';
+        hudMeteorName.textContent = shower.name;
+        hudMeteorPeak.textContent = diff < 0.5 ? 'peaking now' : `±${diff.toFixed(1)}d from peak`;
+    } else {
+        hudMeteorSection.style.display = 'none';
+    }
 }
+
+// Cached by updateSlow (1/sec — shower windows span days, no need to
+// recompute every frame) and read by the per-frame meteor streak tick.
+let currentShowerInfo = null;
 
 // Eclipse search is more expensive than the per-second state update, and the
 // answers only change once every ~2 weeks — recompute every 30 seconds.
@@ -899,6 +923,7 @@ function animate() {
     if (updateEarthShader) updateEarthShader(state.sunDirection, camera);
     if (setCloudSunDirection) setCloudSunDirection(state.sunDirection);
     if (tickClouds) tickClouds(dtSec);
+    meteorEffect.tick(dtSec, currentShowerInfo);
 
     hudRotation.textContent = state.rotationAngle.toFixed(3) + '°';
     hudTime.textContent = formatUTC(now);
