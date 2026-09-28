@@ -27,6 +27,9 @@
 import * as THREE from 'three';
 
 const VERTEX_SHADER = /* glsl */ `
+    uniform sampler2D uHeightTexture;
+    uniform float uDisplacementScale;
+
     varying vec2 vUv;
     varying vec3 vNormalLocal;
     varying vec3 vLocalPosition;
@@ -34,8 +37,20 @@ const VERTEX_SHADER = /* glsl */ `
     void main() {
         vUv = uv;
         vNormalLocal = normalize(normal);
-        vLocalPosition = position;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+
+        // Sample heightmap with the same UV shift used in the fragment shader
+        // (so displacement lines up with the day texture).
+        vec2 sampleUv = vec2(fract(uv.x + 0.25), uv.y);
+        float height = texture2D(uHeightTexture, sampleUv).r;
+
+        // Displace along the surface normal. Height 0 (sea/deep water) stays
+        // at the base sphere; brighter values push the vertex outward.
+        // uDisplacementScale is heavily exaggerated vs reality (Everest is
+        // only 0.14% of Earth's radius) so mountains actually READ from orbit.
+        vec3 displaced = position + normal * height * uDisplacementScale;
+        vLocalPosition = displaced;
+
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
     }
 `;
 
@@ -117,18 +132,20 @@ const FRAGMENT_SHADER = /* glsl */ `
 export async function buildEarthMaterial(mesh) {
     const loader = new THREE.TextureLoader();
 
-    const [dayTexture, nightTexture, specTexture, normalTexture] = await Promise.all([
+    const [dayTexture, nightTexture, specTexture, normalTexture, heightTexture] = await Promise.all([
         loader.loadAsync('/textures/earth_day_2k.jpg'),
         loader.loadAsync('/textures/earth_night_2k.jpg'),
         loader.loadAsync('/textures/earth_specular_2k.jpg'),
         loader.loadAsync('/textures/earth_normal_2k.jpg'),
+        loader.loadAsync('/textures/earth_height_4k.jpg'),
     ]);
 
     dayTexture.colorSpace = THREE.SRGBColorSpace;
     nightTexture.colorSpace = THREE.SRGBColorSpace;
-    // Specular and normal maps are DATA (not color), so keep them in linear space.
+    // Specular, normal, and height maps are DATA (not color), keep in linear space.
     specTexture.colorSpace = THREE.NoColorSpace;
     normalTexture.colorSpace = THREE.NoColorSpace;
+    heightTexture.colorSpace = THREE.NoColorSpace;
 
     const material = new THREE.ShaderMaterial({
         vertexShader: VERTEX_SHADER,
@@ -138,11 +155,15 @@ export async function buildEarthMaterial(mesh) {
             uNightTexture: { value: nightTexture },
             uSpecularTexture: { value: specTexture },
             uNormalTexture: { value: normalTexture },
+            uHeightTexture: { value: heightTexture },
             uSunDirectionLocal: { value: new THREE.Vector3(1, 0, 0) },
             uCameraPositionLocal: { value: new THREE.Vector3(0, 0, 5) },
             uNightBoost: { value: 1.4 },
             uSpecularStrength: { value: 2.4 },
             uNormalStrength: { value: 1.4 },
+            // ~40x exaggerated (real Everest is 0.14% of Earth's radius; here it's ~5.5%).
+            // Enough to visibly stick up from orbit without looking cartoonish.
+            uDisplacementScale: { value: 0.055 },
         },
     });
 

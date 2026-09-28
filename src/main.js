@@ -132,7 +132,10 @@ scene.add(earthGroup);
 const earthSpin = new THREE.Group();
 earthGroup.add(earthSpin);
 
-const earthGeometry = new THREE.SphereGeometry(1, 96, 96);
+// Higher subdivisions for smooth terrain displacement — 256×256 = ~65k
+// vertices, well within modern GPU headroom. Reduce for low-end mobile if
+// framerate suffers.
+const earthGeometry = new THREE.SphereGeometry(1, 256, 256);
 // Placeholder material — swapped for the shader material once textures load.
 // Keeps the sphere visible during the async texture fetch (typically < 200ms).
 const placeholderMaterial = new THREE.MeshBasicMaterial({ color: 0x1a2a3a });
