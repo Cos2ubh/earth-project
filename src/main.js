@@ -309,7 +309,18 @@ liveBtn.addEventListener('click', () => {
 
 speedButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
+        const alreadyActive = btn.hasAttribute('data-active');
+        // Always clear all first — makes the group behave like a toggle set.
         speedButtons.forEach((b) => b.removeAttribute('data-active'));
+
+        if (alreadyActive) {
+            // Click on the already-active speed = deselect + pause at current time.
+            setPaused(getSimulatedTime());
+            playPauseBtn.setAttribute('data-state', 'paused');
+            return;
+        }
+
+        // New speed picked — activate visually and start / update scrubbing.
         btn.setAttribute('data-active', '1');
         const speed = parseInt(btn.dataset.speed, 10);
         if (getMode() === 'scrubbing') {
