@@ -374,19 +374,37 @@
                 color: rgba(255, 255, 255, 1);
                 border-color: rgba(255, 255, 255, 0.25);
             }
+
+            /* --- Cinematic intro ------------------------------------------- */
+            /* Every chrome panel starts hidden; main.js's intro sequence removes
+               .intro-active from <body> once the camera dolly finishes (or
+               instantly, for prefers-reduced-motion / an impatient first click).
+               transition-delay is set per-panel from JS for a slight cascade. */
+            .chrome-panel {
+                transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+                            transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+            body.intro-active .chrome-panel {
+                opacity: 0;
+                transform: translateY(10px);
+                pointer-events: none;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .chrome-panel { transition: none; }
+            }
         </style>
     </head>
-    <body>
+    <body class="intro-active">
         <canvas id="canvas"></canvas>
 
-        <div id="search-bar">
+        <div id="search-bar" class="chrome-panel">
             <input id="search-input" type="text"
                    placeholder="Ask anything —  when did Katrina hit  ·  August 29 2005  ·  2 months ago"
                    autocomplete="off" spellcheck="false" />
             <div id="search-result"></div>
         </div>
 
-        <div id="hud">
+        <div id="hud" class="chrome-panel">
             <section>
                 <h2>Earth</h2>
                 <div class="row"><span class="k">Axial tilt</span><span class="v" id="hud-tilt">—</span></div>
@@ -422,7 +440,7 @@
             </section>
         </div>
 
-        <div id="top-right">
+        <div id="top-right" class="chrome-panel">
             <button id="recenter-btn" type="button" title="Reset camera to default view">recenter</button>
             <button id="hd-toggle" type="button" title="Upgrade to 8K textures">
                 <span id="hd-status">HD</span>
@@ -431,7 +449,7 @@
             <div id="hint">Drag to orbit · scroll to zoom</div>
         </div>
 
-        <div id="scrub-bar">
+        <div id="scrub-bar" class="chrome-panel">
             <div id="scrub-controls">
                 <button id="live-btn" type="button" title="Return to real-time">LIVE</button>
                 <button id="play-pause" type="button" data-state="paused" title="Play / pause time scrubbing">
@@ -449,7 +467,7 @@
             <div id="scrub-label">— · LIVE</div>
         </div>
 
-        <div id="disclaimer">
+        <div id="disclaimer" class="chrome-panel">
             <span class="live">Live data · updates each frame</span>
             <span>Not to scale — positions are astronomically accurate, sizes are not.</span>
         </div>

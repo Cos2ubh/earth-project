@@ -34,6 +34,7 @@ import { buildLocationPin } from './locationPin.js';
 import { resolveQuery } from './search.js';
 import { fetchHistoricalEarthTexture, isDateInGibsRange } from './historicalTexture.js';
 import { shouldAutoUpgrade, upgradeToHighRes } from './textureUpgrade.js';
+import { playIntro } from './intro.js';
 import {
     getSimulatedTime,
     setLive,
@@ -122,6 +123,17 @@ controls.saveState();
 
 document.getElementById('recenter-btn').addEventListener('click', () => {
     controls.reset();
+});
+
+// --- Cinematic intro ----------------------------------------------------------
+// Disable orbit input for the dolly-in so a drag mid-flight can't fight the
+// tween; playIntro re-enables it (via introActive flag below) once it's done
+// or skipped. See src/intro.js for the full rationale.
+let introActive = true;
+controls.enabled = false;
+playIntro(camera, { x: 0, y: 1.5, z: 6.5 }, () => {
+    introActive = false;
+    controls.enabled = true;
 });
 
 // --- Earth hierarchy ---------------------------------------------------------
@@ -797,7 +809,10 @@ function animate() {
     hudRotation.textContent = state.rotationAngle.toFixed(3) + '°';
     hudTime.textContent = formatUTC(now);
 
-    controls.update();
+    // Skip OrbitControls entirely while the intro dolly owns camera.position —
+    // it's disabled for input already, but this also keeps it from touching
+    // the camera at all until playIntro hands control back.
+    if (!introActive) controls.update();
     composer.render();
 }
 
