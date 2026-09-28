@@ -21,6 +21,7 @@
   "dependencies": {
     "astronomy-engine": "^2.1.19",
     "chrono-node": "^2.10.1",
+    "satellite.js": "^7.1.0",
     "three": "^0.186.1"
   },
   "devDependencies": {

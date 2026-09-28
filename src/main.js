@@ -45,6 +45,7 @@ import {
 } from './shareMoment.js';
 import { getActiveShower, buildMeteorShowerEffect } from './meteorShowers.js';
 import { buildAurora } from './aurora.js';
+import { buildSatelliteTracker } from './satellites.js';
 import {
     getSimulatedTime,
     setLive,
@@ -710,6 +711,27 @@ function updateAuroraHud() {
 updateAuroraHud();
 setInterval(updateAuroraHud, 5000);
 
+// --- Live satellite tracking ------------------------------------------------
+// Real Celestrak orbital elements, propagated with satellite.js (SGP4). Only
+// shown in live mode — see src/satellites.js for why scrubbed dates hide it.
+const hudSatellitesSection = document.getElementById('hud-satellites');
+const hudSatellitesRows = document.getElementById('hud-satellites-rows');
+const satelliteTracker = buildSatelliteTracker();
+earthSpin.add(satelliteTracker.group);
+
+function updateSatellitesHud() {
+    const info = satelliteTracker.getTrackedInfo();
+    if (getMode() !== 'live' || info.length === 0) {
+        hudSatellitesSection.style.display = 'none';
+        return;
+    }
+    hudSatellitesSection.style.display = '';
+    hudSatellitesRows.innerHTML = info
+        .map((s) => `<div class="row"><span class="k">${s.name}</span><span class="v dim">${Math.round(s.altitudeKm)} km</span></div>`)
+        .join('');
+}
+setInterval(updateSatellitesHud, 2000);
+
 // --- Post-processing: bloom --------------------------------------------------
 // Bright pixels (Sun marker, city lights on Earth's night side) glow softly.
 // EffectComposer replaces the direct renderer.render() call in the loop.
@@ -944,6 +966,7 @@ function animate() {
     if (tickClouds) tickClouds(dtSec);
     meteorEffect.tick(dtSec, currentShowerInfo);
     aurora.tick(dtSec);
+    satelliteTracker.tick(now, getMode() === 'live');
 
     hudRotation.textContent = state.rotationAngle.toFixed(3) + '°';
     hudTime.textContent = formatUTC(now);
