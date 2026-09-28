@@ -10,9 +10,16 @@
 
 import * as THREE from 'three';
 
+// High-res source images.
+//   Earth day/night use NASA Blue Marble Next Generation (10800×5400) — the
+//   cloud-free reference composite. This is a real upgrade over Solar System
+//   Scope's 8K because SSC bakes clouds into the day map, which conflicted
+//   with our separate cloud layer. NASA imagery is stitched from MODIS at
+//   500m/pixel and is public domain.
+//   Clouds + moon stay on SSC 8K (best equivalent available for those).
 const HIGH_RES = {
-    earthDay: '/textures/earth_day_8k.jpg',
-    earthNight: '/textures/earth_night_8k.jpg',
+    earthDay: '/textures/earth_day_bmng_10k.jpg',
+    earthNight: '/textures/earth_night_bm_10k.jpg',
     clouds: '/textures/earth_clouds_8k.jpg',
     moon: '/textures/moon_8k.jpg',
 };
