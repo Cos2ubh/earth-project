@@ -12,11 +12,17 @@
 //   Standard equirectangular Earth textures put prime meridian at u=0.5.
 //   So we shift the sample UV by +0.25 in the shader.
 //
-// Note on normal mapping: this uses a simplified per-fragment perturbation
-// (XY offset only, no full tangent-space TBN). Not physically correct, but
-// visually convincing for terrain relief at planetary scale. A proper TBN
-// implementation would require analytical tangent vectors from sphere position,
-// which is doable but adds complexity — skipped for now.
+// Normal mapping uses analytical tangent-space TBN — for a sphere, tangent
+// vectors can be derived on the fly from the position (T = cross(up, N),
+// B = cross(N, T)). This is proper tangent-space normal mapping: mountains
+// catch light on the correct side depending on where the sun is, giving
+// visible relief instead of just a texture-y bump.
+//
+// Ocean shading has two contributions:
+//   - Sharp specular sun glint (Blinn-Phong, high exponent) — the bright dot
+//     where the sun reflects directly off water
+//   - Fresnel sky reflection — water gets brighter at glancing angles because
+//     it reflects the sky. This is what makes real oceans look "wet."
 
 import * as THREE from 'three';
 
@@ -58,9 +64,18 @@ const FRAGMENT_SHADER = /* glsl */ `
         float specMask  = texture2D(uSpecularTexture, sampleUv).r; // white = water
         vec3 nmapRaw    = texture2D(uNormalTexture,   sampleUv).xyz * 2.0 - 1.0;
 
-        // Approximate normal perturbation: shift XY of the local-space normal
-        // by the normal map's XY. Not tangent-space, but reads as terrain.
-        vec3 N = normalize(vNormalLocal + vec3(nmapRaw.x, nmapRaw.y, 0.0) * uNormalStrength);
+        // Analytical tangent-space TBN for a sphere.
+        // Tangent points east along a parallel, bitangent points north along a
+        // meridian, normal is the geometric surface normal. Degenerates exactly
+        // at the poles — acceptable since polar ice hides the artifact.
+        vec3 N_geom = normalize(vNormalLocal);
+        vec3 T = normalize(cross(vec3(0.0, 1.0, 0.0), N_geom));
+        vec3 B = normalize(cross(N_geom, T));
+
+        // Scale the tangential (XY) components of the normal map by uNormalStrength.
+        // Z stays close to 1 so the base normal orientation is preserved.
+        vec3 nmap = vec3(nmapRaw.xy * uNormalStrength, nmapRaw.z);
+        vec3 N = normalize(T * nmap.x + B * nmap.y + N_geom * nmap.z);
 
         // Lighting from Sun (both vectors in local frame).
         float lightIntensity = dot(N, uSunDirectionLocal);
@@ -68,13 +83,30 @@ const FRAGMENT_SHADER = /* glsl */ `
 
         vec3 color = mix(nightColor, dayColor, dayWeight);
 
-        // Blinn-Phong specular — only on water, only on the day side.
+        // View + half vectors for specular / Fresnel.
         vec3 viewDir = normalize(uCameraPositionLocal - vLocalPosition);
         vec3 halfVec = normalize(uSunDirectionLocal + viewDir);
-        float specTerm = pow(max(dot(N, halfVec), 0.0), 40.0);
-        vec3 specColor = vec3(1.1, 1.0, 0.85) * specTerm * specMask * dayWeight * uSpecularStrength;
+        float NdotV = clamp(dot(N, viewDir), 0.0, 1.0);
 
-        gl_FragColor = vec4(color + specColor, 1.0);
+        // --- Ocean: sharp sun glint (Blinn-Phong, tight exponent).
+        // High exponent = small bright dot, real-ocean-like.
+        float sunGlint = pow(max(dot(N, halfVec), 0.0), 90.0);
+        vec3 glintColor = vec3(1.4, 1.28, 1.05) * sunGlint * specMask * dayWeight * uSpecularStrength;
+
+        // --- Ocean: Fresnel sky reflection.
+        // Water gets more reflective at glancing angles — this is what makes
+        // seas visibly "wet" from orbit. Tinted a soft pale blue to fake the
+        // sky the water is reflecting.
+        float fresnel = pow(1.0 - NdotV, 4.0);
+        vec3 fresnelColor = vec3(0.35, 0.55, 0.85) * fresnel * specMask * dayWeight * 0.55;
+
+        // --- Terrain: subtle contact shadow (self-occlusion at glancing angles).
+        // Where the normal-mapped surface is barely lit, dim slightly extra so
+        // mountain slopes read as having depth.
+        float slopeShade = 1.0 - (1.0 - smoothstep(0.0, 0.35, lightIntensity)) * (1.0 - specMask) * 0.35;
+        color *= slopeShade;
+
+        gl_FragColor = vec4(color + glintColor + fresnelColor, 1.0);
     }
 `;
 
@@ -109,8 +141,8 @@ export async function buildEarthMaterial(mesh) {
             uSunDirectionLocal: { value: new THREE.Vector3(1, 0, 0) },
             uCameraPositionLocal: { value: new THREE.Vector3(0, 0, 5) },
             uNightBoost: { value: 1.4 },
-            uSpecularStrength: { value: 1.6 },
-            uNormalStrength: { value: 0.5 },
+            uSpecularStrength: { value: 2.4 },
+            uNormalStrength: { value: 1.4 },
         },
     });
 
