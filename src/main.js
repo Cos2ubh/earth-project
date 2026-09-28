@@ -36,6 +36,14 @@ import { fetchHistoricalEarthTexture, isDateInGibsRange } from './historicalText
 import { shouldAutoUpgrade, upgradeToHighRes } from './textureUpgrade.js';
 import { playIntro } from './intro.js';
 import {
+    readSharedStateFromUrl,
+    buildShareUrl,
+    buildTweetIntentUrl,
+    copyToClipboard,
+    captureMomentImage,
+    downloadDataUrl,
+} from './shareMoment.js';
+import {
     getSimulatedTime,
     setLive,
     setPaused,
@@ -125,16 +133,31 @@ document.getElementById('recenter-btn').addEventListener('click', () => {
     controls.reset();
 });
 
-// --- Cinematic intro ----------------------------------------------------------
+// --- Cinematic intro / shared-moment links -----------------------------------
 // Disable orbit input for the dolly-in so a drag mid-flight can't fight the
 // tween; playIntro re-enables it (via introActive flag below) once it's done
 // or skipped. See src/intro.js for the full rationale.
+//
+// If the URL carries a shared moment (see src/shareMoment.js — someone's
+// "share this view" link), honor it instead of the generic intro: jump
+// straight to that time and camera angle, no dolly, no dramatic reveal —
+// the whole point of a shared link is landing exactly where they left it.
 let introActive = true;
-controls.enabled = false;
-playIntro(camera, { x: 0, y: 1.5, z: 6.5 }, () => {
+const sharedState = readSharedStateFromUrl();
+
+if (sharedState) {
+    camera.position.set(sharedState.position.x, sharedState.position.y, sharedState.position.z);
+    camera.lookAt(0, 0, 0);
+    setPaused(sharedState.date);
     introActive = false;
-    controls.enabled = true;
-});
+    document.body.classList.remove('intro-active');
+} else {
+    controls.enabled = false;
+    playIntro(camera, { x: 0, y: 1.5, z: 6.5 }, () => {
+        introActive = false;
+        controls.enabled = true;
+    });
+}
 
 // --- Earth hierarchy ---------------------------------------------------------
 
@@ -681,6 +704,77 @@ composer.addPass(bloomPass);
 // of the chain — without it, colors can look washed out after bloom.
 const outputPass = new OutputPass();
 composer.addPass(outputPass);
+
+// --- Share this moment --------------------------------------------------------
+// Encodes the current simulated time + camera position into a URL (see
+// src/shareMoment.js) so a shared link reopens to this exact view, and
+// offers a composed PNG (rendered frame + burned-in stat card) for actually
+// posting somewhere images matter more than links, like Twitter/X.
+
+const shareBtn = document.getElementById('share-btn');
+const shareMenu = document.getElementById('share-menu');
+const shareCopyLinkBtn = document.getElementById('share-copy-link');
+const shareDownloadBtn = document.getElementById('share-download-image');
+const shareTweetBtn = document.getElementById('share-tweet');
+
+function closeShareMenu() {
+    shareMenu.removeAttribute('data-open');
+    shareBtn.removeAttribute('data-active');
+}
+
+function currentShareLines() {
+    const now = getSimulatedTime();
+    const state = getEarthState(now);
+    return [
+        formatUTC(now),
+        `Axial tilt ${state.axialTilt.toFixed(4)}°`,
+        `Moon ${(state.moon.phaseFraction * 100).toFixed(1)}% · ${Math.round(state.moon.distanceKm).toLocaleString()} km`,
+    ];
+}
+
+shareBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const opening = !shareMenu.hasAttribute('data-open');
+    if (opening) {
+        // Position the dropdown just under the share button.
+        const rect = shareBtn.getBoundingClientRect();
+        shareMenu.style.top = `${rect.bottom + 8}px`;
+        shareMenu.style.right = `${window.innerWidth - rect.right}px`;
+        shareMenu.setAttribute('data-open', '1');
+        shareBtn.setAttribute('data-active', '1');
+    } else {
+        closeShareMenu();
+    }
+});
+
+// Close the menu on any outside click — standard dropdown behavior.
+window.addEventListener('click', () => closeShareMenu());
+shareMenu.addEventListener('click', (e) => e.stopPropagation());
+
+shareCopyLinkBtn.addEventListener('click', async () => {
+    const url = buildShareUrl(getSimulatedTime(), camera.position);
+    const ok = await copyToClipboard(url);
+    shareCopyLinkBtn.textContent = ok ? 'Copied!' : 'Copy failed — select & copy manually';
+    setTimeout(() => {
+        shareCopyLinkBtn.textContent = 'Copy link to this moment';
+        closeShareMenu();
+    }, 1400);
+});
+
+shareDownloadBtn.addEventListener('click', () => {
+    const dataUrl = captureMomentImage(renderer, composer, currentShareLines());
+    const now = getSimulatedTime();
+    downloadDataUrl(dataUrl, `earth-${now.toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`);
+    closeShareMenu();
+});
+
+shareTweetBtn.addEventListener('click', () => {
+    const url = buildShareUrl(getSimulatedTime(), camera.position);
+    const now = getSimulatedTime();
+    const text = `What Earth looked like at ${formatUTC(now)} — astronomically accurate, live in the browser.`;
+    window.open(buildTweetIntentUrl(url, text), '_blank', 'noopener,noreferrer');
+    closeShareMenu();
+});
 
 // --- Apply orientations ------------------------------------------------------
 

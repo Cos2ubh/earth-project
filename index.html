@@ -374,6 +374,60 @@
                 color: rgba(255, 255, 255, 1);
                 border-color: rgba(255, 255, 255, 0.25);
             }
+            #share-btn {
+                background: rgba(0, 0, 0, 0.42);
+                backdrop-filter: blur(14px) saturate(140%);
+                -webkit-backdrop-filter: blur(14px) saturate(140%);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 6px;
+                padding: 6px 12px;
+                color: rgba(255, 255, 255, 0.75);
+                font: inherit;
+                font-size: 10.5px;
+                font-weight: 600;
+                letter-spacing: 0.16em;
+                text-transform: uppercase;
+                cursor: pointer;
+                transition: color 0.2s, border-color 0.2s;
+            }
+            #share-btn:hover {
+                color: rgba(255, 255, 255, 1);
+                border-color: rgba(255, 255, 255, 0.25);
+            }
+            #share-btn[data-active] {
+                color: rgba(74, 212, 200, 0.95);
+                border-color: rgba(74, 212, 200, 0.5);
+            }
+            #share-menu {
+                position: fixed;
+                background: rgba(10, 10, 14, 0.92);
+                backdrop-filter: blur(14px) saturate(140%);
+                -webkit-backdrop-filter: blur(14px) saturate(140%);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 8px;
+                padding: 8px;
+                display: none;
+                flex-direction: column;
+                gap: 2px;
+                z-index: 20;
+                min-width: 190px;
+            }
+            #share-menu[data-open] { display: flex; }
+            #share-menu button {
+                background: transparent;
+                border: none;
+                border-radius: 5px;
+                padding: 8px 10px;
+                color: rgba(255, 255, 255, 0.85);
+                font: inherit;
+                font-size: 11.5px;
+                text-align: left;
+                cursor: pointer;
+            }
+            #share-menu button:hover {
+                background: rgba(255, 255, 255, 0.08);
+                color: #fff;
+            }
 
             /* --- Cinematic intro ------------------------------------------- */
             /* Every chrome panel starts hidden; main.js's intro sequence removes
@@ -446,7 +500,14 @@
                 <span id="hd-status">HD</span>
             </button>
             <button id="locate-btn" type="button" title="Pin your location on Earth">locate me</button>
+            <button id="share-btn" type="button" title="Share this exact moment">share</button>
             <div id="hint">Drag to orbit · scroll to zoom</div>
+        </div>
+
+        <div id="share-menu">
+            <button id="share-copy-link" type="button">Copy link to this moment</button>
+            <button id="share-download-image" type="button">Download image</button>
+            <button id="share-tweet" type="button">Share on X / Twitter</button>
         </div>
 
         <div id="scrub-bar" class="chrome-panel">
