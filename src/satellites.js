@@ -20,9 +20,8 @@
 //   - "In sunlight" is computed from real geometry — the satellite's orbital
 //     position against the true Sun direction, both in the same equatorial
 //     frame — with a simple cylindrical Earth shadow (no penumbra, no
-//     atmosphere). That is accurate to within a few seconds of the real
-//     eclipse entry/exit for a low orbit like the ISS, and it does not depend
-//     on how the 3D scene happens to orient the globe.
+//     atmosphere). Good enough for a low orbit like the ISS, and it does not
+//     depend on how the 3D scene happens to orient the globe.
 //
 // Structure note: the trail lives at the tracker's origin, NOT inside the
 // moving marker group. An earlier version parented the trail to the marker,

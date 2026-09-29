@@ -1,5 +1,6 @@
 // Astronomy wrapper — every number the visualization uses comes from here.
-// Backed by astronomy-engine (NASA JPL-accurate, arcsecond-level precision).
+// Backed by astronomy-engine, which documents about one arcminute of accuracy
+// against JPL Horizons and NOVAS.
 //
 // This module is browser-safe (no Node built-ins). For CLI verification, see
 // scripts/verify-astronomy.js.
@@ -285,8 +286,8 @@ export function getMoonState(date = new Date()) {
  *   solar: { peakDate: Date, kind: 'total'|'annular'|'partial', daysAway }
  *   lunar: { peakDate: Date, kind: 'total'|'partial'|'penumbral', daysAway }
  *
- * Uses astronomy-engine's built-in eclipse search — accurate to seconds and
- * agrees with NASA's published eclipse predictions.
+ * Uses astronomy-engine's built-in eclipse search. The dates and kinds come
+ * straight from the library and are only as accurate as it is.
  */
 export function getNextEclipses(date = new Date()) {
     const solar = Astronomy.SearchGlobalSolarEclipse(date);

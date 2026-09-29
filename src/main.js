@@ -460,8 +460,8 @@ function seasonFor(sunEclipticLon, latitude) {
 
 function localSolarTime(date, longitudeDeg) {
     // Mean local solar time: UTC + longitude/15 hours.
-    // Doesn't include the equation of time (up to ±16 min), which is fine
-    // for a HUD readout — accurate to within a quarter hour of true solar noon.
+    // Doesn't include the equation of time (up to about 16 min), which is fine
+    // for a HUD readout. It can differ from a sundial by that much.
     const utcHours = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
     let lst = utcHours + longitudeDeg / 15;
     lst = ((lst % 24) + 24) % 24;
@@ -711,7 +711,7 @@ materialRefs.moonMaterial = moonMaterial;
 
 // Moon orbit ring — thin traced path showing where the Moon travels around
 // Earth over one sidereal month. Uses the same astronomy engine so the 5.14°
-// inclination and orbital plane orientation are exact.
+// inclination and orbital plane orientation come from the ephemeris.
 const moonOrbit = buildMoonOrbit(MOON_SCENE_DISTANCE);
 scene.add(moonOrbit);
 
