@@ -113,10 +113,10 @@ export async function upgradeToHighRes(refs, onProgress) {
     if (refs.moonMaterial) {
         tasks.push(
             loadTexture(HIGH_RES.moon, THREE.SRGBColorSpace).then((tex) => {
-                const old = refs.moonMaterial.map;
-                refs.moonMaterial.map = tex;
-                refs.moonMaterial.needsUpdate = true;
-                if (old) old.dispose();
+                // Moon is a ShaderMaterial (see moonSurface.js): swap the uniform,
+                // keeping the anisotropy the 2K map was set up with.
+                tex.anisotropy = refs.moonMaterial.uniforms.uMap.value?.anisotropy ?? 1;
+                swapUniformTexture(refs.moonMaterial, 'uMap', tex);
                 onProgress?.('moon');
                 return 'moon';
             }),

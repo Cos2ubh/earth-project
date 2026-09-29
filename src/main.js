@@ -30,6 +30,8 @@ import { buildClouds } from './clouds.js';
 import { buildStars } from './stars.js';
 import { buildAtmosphere } from './atmosphere.js';
 import { buildMoonOrbit, updateMoonOrbit } from './moonOrbit.js';
+import { buildMoonMaterial, updateMoonSurface } from './moonSurface.js';
+import { buildSun } from './sunSurface.js';
 import { buildLocationPin } from './locationPin.js';
 import { resolveQuery } from './search.js';
 import { fetchHistoricalEarthTexture, isDateInGibsRange } from './historicalTexture.js';
@@ -677,14 +679,14 @@ const ambientLight = new THREE.AmbientLight(0xffffff, 0.04);
 scene.add(ambientLight);
 
 // --- Sun marker --------------------------------------------------------------
-// A visible yellow sphere placed in the Sun's direction, at a distance chosen
-// for visual clarity — NOT to scale (per the disclaimer). Phase 9 will add
-// bloom for a proper glow.
+// The Sun, placed in its real direction at a distance chosen for visual
+// clarity — NOT to scale (per the disclaimer). It is a procedural star, not a
+// flat disc: boiling granulation, sunspots, limb darkening and a corona
+// (see src/sunSurface.js). `sunMarker` is the group that gets positioned.
 
 const sunMarkerDistance = 8;
-const sunMarkerGeometry = new THREE.SphereGeometry(0.35, 32, 32);
-const sunMarkerMaterial = new THREE.MeshBasicMaterial({ color: 0xffdd66 });
-const sunMarker = new THREE.Mesh(sunMarkerGeometry, sunMarkerMaterial);
+const sun = buildSun(0.35);
+const sunMarker = sun.group;
 scene.add(sunMarker);
 
 // --- Moon --------------------------------------------------------------------
@@ -693,17 +695,14 @@ scene.add(sunMarker);
 // covers this). Real Moon:Earth radius ratio is 0.273; we use 0.15 for
 // visual balance at the compressed distance.
 //
-// The Moon uses MeshStandardMaterial so the Sun's DirectionalLight illuminates
-// it naturally — lunar phase emerges from the same lighting that gives Earth
-// its day/night terminator, no extra shader needed.
+// The Moon has its own small shader (src/moonSurface.js): lit from the real Sun
+// direction so lunar phase emerges from the same geometry as Earth's terminator,
+// with crater relief, earthshine, and tidal locking (the near side always faces
+// Earth). Its colour map is swapped in below and by the HD-upgrade path.
 
 const MOON_SCENE_DISTANCE = 5;
-const moonGeometry = new THREE.SphereGeometry(0.15, 64, 64);
-const moonMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    roughness: 0.95, // slight variation so craters catch grazing highlights
-    metalness: 0,
-});
+const moonGeometry = new THREE.SphereGeometry(0.15, 96, 96);
+const moonMaterial = buildMoonMaterial();
 const moon = new THREE.Mesh(moonGeometry, moonMaterial);
 scene.add(moon);
 
@@ -719,8 +718,8 @@ scene.add(moonOrbit);
 // Load moon texture asynchronously; assigns to the existing material once ready.
 new THREE.TextureLoader().load('/textures/moon_2k.jpg', (tex) => {
     tex.colorSpace = THREE.SRGBColorSpace;
-    moonMaterial.map = tex;
-    moonMaterial.needsUpdate = true;
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    moonMaterial.uniforms.uMap.value = tex;
 });
 
 // --- Stars (real Yale Bright Star Catalog) -----------------------------------
@@ -937,12 +936,14 @@ function formatUTC(date) {
     return iso.slice(0, 10) + ' ' + iso.slice(11, 19) + ' UTC';
 }
 
-function applyMoonState(moonState) {
+function applyMoonState(moonState, sunDir) {
     moon.position.set(
         moonState.direction.x * MOON_SCENE_DISTANCE,
         moonState.direction.y * MOON_SCENE_DISTANCE,
         moonState.direction.z * MOON_SCENE_DISTANCE,
     );
+    // Face Earth, and hand the shader the Sun/Earth directions it lights with.
+    updateMoonSurface(moon, moonMaterial, moonState.direction, sunDir);
 }
 
 // Slow updates: values that change over minutes / hours / days.
@@ -952,7 +953,7 @@ function updateSlow() {
     const state = getEarthState(now);
     applyAxialTilt(state.axialTilt);
     applySunDirection(state.sunDirection);
-    applyMoonState(state.moon);
+    applyMoonState(state.moon, state.sunDirection);
     // Refresh the moon orbit ring occasionally (every ~1 sim-hour) so it
     // stays anchored around the current simulated time and shows the small
     // orbital-plane drift when scrubbing.
@@ -1049,8 +1050,11 @@ function animate() {
     if (getMode() !== 'live') {
         applyAxialTilt(state.axialTilt);
         applySunDirection(state.sunDirection);
-        applyMoonState(state.moon);
+        applyMoonState(state.moon, state.sunDirection);
     }
+
+    // The Sun's surface boils in real time; its sunspots ride on simulated time.
+    sun.update(nowMs / 1000, now.getTime());
 
     // Feed world-space Sun direction (and camera position for Earth's specular)
     // into the Earth + cloud shaders. Each handles world→local transforms.
