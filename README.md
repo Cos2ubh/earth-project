@@ -40,7 +40,7 @@ I built it in small steps and checked the numbers before I made anything look go
 * One clock for everything. `src/timeControl.js` keeps the simulated time in three modes: live, paused and scrubbing. The app passes that clock's time into every astronomy call instead of reading the wall clock. That is why the slider, the search bar, playback and shared links all work through the same code.
 * A small scene graph. The Earth sits in a group that is tilted by the obliquity, and inside it a second group spins at the sidereal rate. The grid, the aurora, the location pin and the ISS trail are children of the spinning group, so they turn with the planet. The Sun and Moon sit at fixed distances that are not to scale, and the page says so.
 * A custom Earth shader. It blends day and night by the angle to the Sun, lights the cities on the dark side, adds an ocean sun glint and a Fresnel sheen, uses a tangent space normal map, and pushes the terrain out using an elevation map. Clouds live on their own sphere and fade out on the night side. An atmosphere shell and a bloom pass finish it.
-* Textures load in stages. The page first paints with a 2K set of about 3.5 MB. On wide screens it then upgrades in the background to NASA imagery at 10K for day and night, and 8K for the clouds and the Moon. Each texture swaps on its own, so one failed download never undoes the others.
+* Textures load in stages. The page paints with a 2K set of about 3.5 MB. The HD set, NASA imagery at 10K for day and night and 8K for the clouds and the Moon, loads only when you press HD. Each texture swaps on its own, so one failed download never undoes the others, and if the graphics card runs out of memory the page puts the small set back.
 * The Sun and Moon have real surfaces. The Sun is fully procedural: animated 3D noise for granulation, sunspots that drift with the Sun's differential rotation, limb darkening and a corona. The Moon is tidally locked, so the near side always faces the Earth. Its craters come from turning the color map into a tangent space normal map, and the dark part gets a little earthshine.
 * The sky is data. The background is 9,096 stars from the Yale Bright Star Catalog at their real coordinates, sized by brightness and tinted by spectral class.
 * Live data, with fallbacks. The ISS comes from Celestrak orbital elements run through satellite.js (SGP4). The aurora reads NOAA's Kp index. If a feed fails, the aurora drops to a quiet default and the ISS stays hidden, because I would rather show nothing than a guessed position.
@@ -101,6 +101,8 @@ I built it in small steps and checked the numbers before I made anything look go
 
 12. **`node_modules` doesn't travel between operating systems.** Vite's bundler ships a native binary for each platform, so copying the folder from Windows to Linux breaks at startup. Run `npm install` on the machine you are using.
 
+13. **The page went white on a small graphics card.** HD used to start by itself on any window 1,400 pixels wide or more. My laptop runs Chrome on its small AMD chip, which has about 500 MB of graphics memory, and the full HD set needs about 1 GB. The browser dropped the WebGL context, the canvas went blank, and the panels kept ticking on top of it. HD is now opt in. If the context is ever lost, the page puts the small textures back before three.js uploads anything again, hides the dead canvas so the page shows black space instead of white, and doesn't try HD again on that visit.
+
 ## Everything it does
 
 ### Earth
@@ -111,7 +113,7 @@ I built it in small steps and checked the numbers before I made anything look go
 * A latitude and longitude grid and a rotation axis line.
 * Aurora bands at both poles, sized and brightened by the live Kp index.
 * Real imagery for any day since May 1, 2000 (MODIS Terra true color from NASA GIBS).
-* HD textures (10K day and night, 8K clouds and Moon) that load on wide screens or when you press HD.
+* HD textures (10K day and night, 8K clouds and Moon) when you press HD.
 
 ### Sun and Moon
 
@@ -192,7 +194,7 @@ src/
   search.js             two step search
   events.js             the 53 curated events
   historicalTexture.js  daily imagery from NASA GIBS
-  textureUpgrade.js     staged HD upgrade
+  textureUpgrade.js     HD textures and the rollback
   shareMoment.js        share links and the PNG export
   intro.js              the opening camera move
   stubs/                empty stand in for the satellite.js WebAssembly parts
@@ -208,7 +210,7 @@ docs/screenshots/       the images in this README
 I would rather list these than have you find them.
 
 * The globe's orientation does not match the real sky yet. The numbers in the panel come straight from Astronomy Engine and are right, but the 3D scene's frame is mirrored, so the drawn day and night line is off and the Moon's lit side is flipped (a waxing Moon is lit on the wrong edge). I know the cause and haven't fixed it yet.
-* HD is heavy. The full HD set needs about 1 GB of graphics memory, and on a small integrated GPU pressing HD can lose the WebGL context and leave a black canvas. Automatic upgrade only starts on windows at least 1,400 pixels wide. I haven't built a lighter HD tier yet.
+* HD is heavy. The full HD set needs about 1 GB of graphics memory. On a small integrated GPU, pressing HD can run the card out of memory and lose the WebGL context. The page catches that, puts the small textures back and turns HD off for the visit, but HD will not work on that machine. I haven't built a lighter HD tier yet.
 * The Sun and Moon surfaces are stylized. The sunspots drift on the real rotation law, but they are not real active regions, and the Moon ignores libration.
 * The aurora is a stylized band placed by a rule of thumb from Kp, not a model of the magnetosphere.
 * Sizes and distances are not to scale, and the page says so. The terrain is about 40 times exaggerated and the ISS is drawn at 1.5 times its real altitude.
