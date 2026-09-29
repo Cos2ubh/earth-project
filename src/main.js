@@ -23,7 +23,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { getEarthState } from './astronomy.js';
+import { getEarthState, getSunDetails, getMoonDetails } from './astronomy.js';
 import { buildLatLonGrid } from './grid.js';
 import { buildEarthMaterial } from './earthMaterial.js';
 import { buildClouds } from './clouds.js';
@@ -68,6 +68,17 @@ const hudSubLat = document.getElementById('hud-sub-lat');
 const hudSubLon = document.getElementById('hud-sub-lon');
 const hudMoonPhase = document.getElementById('hud-moon-phase');
 const hudMoonDist = document.getElementById('hud-moon-dist');
+const hudSunRa = document.getElementById('hud-sun-ra');
+const hudSunDec = document.getElementById('hud-sun-dec');
+const hudSunDist = document.getElementById('hud-sun-dist');
+const hudSunLight = document.getElementById('hud-sun-light');
+const hudSunSize = document.getElementById('hud-sun-size');
+const hudSunSeason = document.getElementById('hud-sun-season');
+const hudMoonIllum = document.getElementById('hud-moon-illum');
+const hudMoonAge = document.getElementById('hud-moon-age');
+const hudMoonSize = document.getElementById('hud-moon-size');
+const hudMoonNextFull = document.getElementById('hud-moon-next-full');
+const hudMoonNextNew = document.getElementById('hud-moon-next-new');
 const hudEclipseSolar = document.getElementById('hud-eclipse-solar');
 const hudEclipseLunar = document.getElementById('hud-eclipse-lunar');
 const hudYouSection = document.getElementById('hud-you');
@@ -99,6 +110,40 @@ function formatLat(deg) {
 function formatLon(deg) {
     const sign = deg >= 0 ? 'E' : 'W';
     return Math.abs(deg).toFixed(3) + '° ' + sign;
+}
+
+// Right ascension in hours → "12h 22m 51s".
+function formatRA(hours) {
+    const total = ((Math.round(hours * 3600) % 86400) + 86400) % 86400;
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+}
+
+// Apparent diameter in degrees → "31′ 55″".
+function formatAngularSize(deg) {
+    const total = Math.round(deg * 3600);
+    return `${Math.floor(total / 60)}\u2032 ${String(total % 60).padStart(2, '0')}\u2033`;
+}
+
+// Seconds → "8 min 19 s".
+function formatLightTime(sec) {
+    const total = Math.round(sec);
+    return `${Math.floor(total / 60)} min ${String(total % 60).padStart(2, '0')} s`;
+}
+
+// "in 27d", or "in 9h" when it is under a day away.
+function formatIn(daysAway) {
+    if (daysAway < 1) return `in ${Math.max(1, Math.round(daysAway * 24))}h`;
+    return `in ${Math.round(daysAway)}d`;
+}
+
+// { date, daysAway } → "Oct 26 · in 27d" (UTC, like the rest of the panel).
+function formatEvent(event) {
+    if (!event) return '\u2014';
+    const day = event.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    return `${day} \u00b7 ${formatIn(event.daysAway)}`;
 }
 
 // --- Scene, camera, renderer -------------------------------------------------
@@ -919,8 +964,24 @@ function updateSlow() {
     hudSubLat.textContent = formatLat(state.subsolarPoint.latitude);
     hudSubLon.textContent = formatLon(state.subsolarPoint.longitude);
     hudSunLon.textContent = state.sunEclipticLongitude.toFixed(3) + '°';
-    hudMoonPhase.textContent = (state.moon.phaseFraction * 100).toFixed(1) + '%';
+    hudMoonIllum.textContent = (state.moon.phaseFraction * 100).toFixed(1) + '%';
     hudMoonDist.textContent = Math.round(state.moon.distanceKm).toLocaleString() + ' km';
+
+    // Extra Sun/Moon readouts — real ephemeris values, see astronomy.js.
+    const sunInfo = getSunDetails(now);
+    hudSunRa.textContent = formatRA(sunInfo.raHours);
+    hudSunDec.textContent = formatLat(sunInfo.decDeg);
+    hudSunDist.textContent = (sunInfo.distanceKm / 1e6).toFixed(2) + ' M km';
+    hudSunLight.textContent = formatLightTime(sunInfo.lightTimeSec);
+    hudSunSize.textContent = formatAngularSize(sunInfo.angularDiameterDeg);
+    hudSunSeason.textContent = `${sunInfo.nextSeason.name} \u00b7 ${formatIn(sunInfo.nextSeason.daysAway)}`;
+
+    const moonInfo = getMoonDetails(now);
+    hudMoonPhase.textContent = moonInfo.phaseName + (moonInfo.supermoon ? ' \u00b7 super' : '');
+    hudMoonAge.textContent = moonInfo.ageDays === null ? '\u2014' : `${moonInfo.ageDays.toFixed(1)} days`;
+    hudMoonSize.textContent = formatAngularSize(moonInfo.angularDiameterDeg);
+    hudMoonNextFull.textContent = formatEvent(moonInfo.nextFull);
+    hudMoonNextNew.textContent = formatEvent(moonInfo.nextNew);
 
     currentShowerInfo = getActiveShower(now);
     if (currentShowerInfo) {

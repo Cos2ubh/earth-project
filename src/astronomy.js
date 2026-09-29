@@ -121,6 +121,114 @@ export function getSunEquatorialDirection(date = new Date()) {
     return { x: eqd.x / length, y: eqd.y / length, z: eqd.z / length };
 }
 
+// --- Sun and Moon detail readouts (for the HUD) --------------------------------
+//
+// Everything below is computed from astronomy-engine's real ephemerides and is
+// independent of the 3D scene frame (see the note on getSunEquatorialDirection).
+
+const AU_KM = 149597870.7;
+const SPEED_OF_LIGHT_KM_S = 299792.458;
+const SUN_RADIUS_KM = 695700;
+const MOON_RADIUS_KM = 1737.4;
+const RAD_TO_DEG = 180 / Math.PI;
+const DAY_MS = 86400000;
+
+// Angular diameter of a sphere of the given radius seen from `distanceKm`.
+function angularDiameterDeg(radiusKm, distanceKm) {
+    return 2 * Math.asin(radiusKm / distanceKm) * RAD_TO_DEG;
+}
+
+// Equinox/solstice instants per year, computed once.
+const seasonCache = new Map();
+function seasonEvents(year) {
+    if (!seasonCache.has(year)) {
+        const s = Astronomy.Seasons(year);
+        seasonCache.set(year, [
+            { name: 'Mar equinox', date: s.mar_equinox.date },
+            { name: 'Jun solstice', date: s.jun_solstice.date },
+            { name: 'Sep equinox', date: s.sep_equinox.date },
+            { name: 'Dec solstice', date: s.dec_solstice.date },
+        ]);
+    }
+    return seasonCache.get(year);
+}
+
+/** The next equinox or solstice after `date`: { name, date, daysAway }. */
+export function getNextSeasonStart(date = new Date()) {
+    const year = date.getUTCFullYear();
+    const upcoming = [...seasonEvents(year), ...seasonEvents(year + 1)].find((e) => e.date > date);
+    return { name: upcoming.name, date: upcoming.date, daysAway: (upcoming.date - date) / DAY_MS };
+}
+
+/**
+ * Sun readouts: right ascension / declination (true equator and equinox of
+ * date), distance, light travel time, apparent size, and the next season
+ * boundary.
+ */
+export function getSunDetails(date = new Date()) {
+    const time = Astronomy.MakeTime(date);
+    const eqj = Astronomy.GeoVector(Astronomy.Body.Sun, time, true);
+    const eqd = Astronomy.RotateVector(Astronomy.Rotation_EQJ_EQD(time), eqj);
+    const equ = Astronomy.EquatorFromVector(eqd); // ra in hours, dec in degrees, dist in AU
+    const distanceKm = equ.dist * AU_KM;
+    return {
+        raHours: equ.ra,
+        decDeg: equ.dec,
+        distanceAu: equ.dist,
+        distanceKm,
+        lightTimeSec: distanceKm / SPEED_OF_LIGHT_KM_S,
+        angularDiameterDeg: angularDiameterDeg(SUN_RADIUS_KM, distanceKm),
+        nextSeason: getNextSeasonStart(date),
+    };
+}
+
+/**
+ * Name for a lunar phase angle (0 = new, 90 = first quarter, 180 = full,
+ * 270 = last quarter). The four principal phases get about a day of slack
+ * (±6°, since the Moon gains ~12° of phase per day).
+ */
+export function moonPhaseName(phaseAngleDeg) {
+    const a = ((phaseAngleDeg % 360) + 360) % 360;
+    if (a < 6 || a >= 354) return 'New moon';
+    if (a < 84) return 'Waxing crescent';
+    if (a < 96) return 'First quarter';
+    if (a < 174) return 'Waxing gibbous';
+    if (a < 186) return 'Full moon';
+    if (a < 264) return 'Waning gibbous';
+    if (a < 276) return 'Last quarter';
+    return 'Waning crescent';
+}
+
+/**
+ * Moon readouts: phase name, illuminated fraction, age since the last new
+ * moon, distance, apparent size, next full/new moon, and a supermoon flag
+ * (a full moon at or inside ~360,000 km — the popular definition).
+ */
+export function getMoonDetails(date = new Date()) {
+    const time = Astronomy.MakeTime(date);
+    const phaseAngle = Astronomy.MoonPhase(time);
+    const geo = Astronomy.GeoVector(Astronomy.Body.Moon, time, true);
+    const distanceKm = Math.hypot(geo.x, geo.y, geo.z) * AU_KM;
+
+    const previousNew = Astronomy.SearchMoonPhase(0, time, -32);
+    const nextNew = Astronomy.SearchMoonPhase(0, time, 32);
+    const nextFull = Astronomy.SearchMoonPhase(180, time, 32);
+    const event = (t) => (t ? { date: t.date, daysAway: (t.date - date) / DAY_MS } : null);
+
+    const nearFull = Math.abs(phaseAngle - 180) <= 18; // within ~1.5 days
+    return {
+        phaseAngle,
+        phaseName: moonPhaseName(phaseAngle),
+        illuminatedFraction: (1 - Math.cos(phaseAngle / RAD_TO_DEG)) / 2,
+        ageDays: previousNew ? (date - previousNew.date) / DAY_MS : null,
+        distanceKm,
+        angularDiameterDeg: angularDiameterDeg(MOON_RADIUS_KM, distanceKm),
+        nextFull: event(nextFull),
+        nextNew: event(nextNew),
+        supermoon: nearFull && distanceKm <= 360000,
+    };
+}
+
 /**
  * Moon's position relative to Earth, in the scene's ecliptic frame.
  * Returns:

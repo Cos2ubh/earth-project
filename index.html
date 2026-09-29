@@ -79,6 +79,15 @@
                 color: rgba(255, 255, 255, 0.65);
                 font-size: 11px;
             }
+            /* The panel got taller with the extra Sun/Moon detail. On short
+               screens tighten the spacing first, then drop the secondary rows. */
+            @media (max-height: 860px) {
+                #hud { top: 12px; padding: 12px 16px 10px; line-height: 1.4; }
+                #hud section + section { margin-top: 8px; padding-top: 8px; }
+            }
+            @media (max-height: 760px) {
+                #hud .row.extra { display: none; }
+            }
             #disclaimer {
                 position: fixed;
                 bottom: 14px;
@@ -499,11 +508,22 @@
             <section>
                 <h2>Sun</h2>
                 <div class="row"><span class="k">Ecliptic longitude</span><span class="v" id="hud-sun-lon">—</span></div>
+                <div class="row"><span class="k">Right ascension</span><span class="v" id="hud-sun-ra">—</span></div>
+                <div class="row"><span class="k">Declination</span><span class="v" id="hud-sun-dec">—</span></div>
+                <div class="row"><span class="k">Distance</span><span class="v dim" id="hud-sun-dist">—</span></div>
+                <div class="row extra"><span class="k">Light travel</span><span class="v dim" id="hud-sun-light">—</span></div>
+                <div class="row extra"><span class="k">Apparent size</span><span class="v dim" id="hud-sun-size">—</span></div>
+                <div class="row"><span class="k">Next season</span><span class="v dim" id="hud-sun-season">—</span></div>
             </section>
             <section>
                 <h2>Moon</h2>
                 <div class="row"><span class="k">Phase</span><span class="v" id="hud-moon-phase">—</span></div>
+                <div class="row"><span class="k">Illuminated</span><span class="v" id="hud-moon-illum">—</span></div>
+                <div class="row"><span class="k">Age</span><span class="v dim" id="hud-moon-age">—</span></div>
                 <div class="row"><span class="k">Distance</span><span class="v dim" id="hud-moon-dist">—</span></div>
+                <div class="row extra"><span class="k">Apparent size</span><span class="v dim" id="hud-moon-size">—</span></div>
+                <div class="row"><span class="k">Next full</span><span class="v dim" id="hud-moon-next-full">—</span></div>
+                <div class="row extra"><span class="k">Next new</span><span class="v dim" id="hud-moon-next-new">—</span></div>
             </section>
             <section>
                 <h2>Next eclipse</h2>
