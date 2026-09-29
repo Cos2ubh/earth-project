@@ -104,6 +104,24 @@ export function getSunDirection(date = new Date()) {
 }
 
 /**
+ * Unit vector from Earth toward the Sun in the true EQUATORIAL frame of date
+ * (+Z = celestial pole) — the frame satellite orbits (TLE/SGP4, "TEME") live
+ * in. Deliberately NOT the scene's frame: physical questions about a real
+ * satellite (is it in Earth's shadow?) should be answered with real geometry
+ * rather than by trusting how the scene happens to orient the globe.
+ *
+ * Difference between this frame (true equator + true equinox of date) and
+ * TEME (true equator + mean equinox) is the nutation in longitude, ~0.005°.
+ */
+export function getSunEquatorialDirection(date = new Date()) {
+    const time = Astronomy.MakeTime(date);
+    const eqj = Astronomy.GeoVector(Astronomy.Body.Sun, time, true);
+    const eqd = Astronomy.RotateVector(Astronomy.Rotation_EQJ_EQD(time), eqj);
+    const length = Math.hypot(eqd.x, eqd.y, eqd.z);
+    return { x: eqd.x / length, y: eqd.y / length, z: eqd.z / length };
+}
+
+/**
  * Moon's position relative to Earth, in the scene's ecliptic frame.
  * Returns:
  *   direction — unit vector { x, y, z } from Earth toward Moon

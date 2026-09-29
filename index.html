@@ -398,6 +398,36 @@
                 color: rgba(74, 212, 200, 0.95);
                 border-color: rgba(74, 212, 200, 0.5);
             }
+            #follow-btn {
+                background: rgba(0, 0, 0, 0.42);
+                backdrop-filter: blur(14px) saturate(140%);
+                -webkit-backdrop-filter: blur(14px) saturate(140%);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 6px;
+                padding: 6px 12px;
+                color: rgba(255, 255, 255, 0.75);
+                font: inherit;
+                font-size: 10.5px;
+                font-weight: 600;
+                letter-spacing: 0.16em;
+                text-transform: uppercase;
+                cursor: pointer;
+                transition: color 0.2s, border-color 0.2s;
+            }
+            #follow-btn:hover {
+                color: rgba(255, 255, 255, 1);
+                border-color: rgba(255, 255, 255, 0.25);
+            }
+            #follow-btn[data-active] {
+                color: rgba(115, 229, 255, 0.98);
+                border-color: rgba(115, 229, 255, 0.55);
+            }
+            #hud-iss-over {
+                max-width: 165px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
             #share-menu {
                 position: fixed;
                 background: rgba(10, 10, 14, 0.92);
@@ -490,9 +520,12 @@
                 <div class="row"><span class="k">Kp index</span><span class="v" id="hud-aurora-kp">—</span></div>
                 <div class="row"><span class="k">Activity</span><span class="v dim" id="hud-aurora-level">—</span></div>
             </section>
-            <section id="hud-satellites" style="display:none">
-                <h2>Satellites</h2>
-                <div id="hud-satellites-rows"></div>
+            <section id="hud-iss" style="display:none">
+                <h2>ISS · live</h2>
+                <div class="row"><span class="k">Over</span><span class="v" id="hud-iss-over">—</span></div>
+                <div class="row"><span class="k">Altitude</span><span class="v dim" id="hud-iss-alt">—</span></div>
+                <div class="row"><span class="k">Speed</span><span class="v dim" id="hud-iss-speed">—</span></div>
+                <div class="row"><span class="k">Sunlight</span><span class="v dim" id="hud-iss-sun">—</span></div>
             </section>
             <section id="hud-you" style="display:none">
                 <h2>You</h2>
@@ -510,6 +543,7 @@
 
         <div id="top-right" class="chrome-panel">
             <button id="recenter-btn" type="button" title="Reset camera to default view">recenter</button>
+            <button id="follow-btn" type="button" title="Ride along with the International Space Station" hidden>follow iss</button>
             <button id="hd-toggle" type="button" title="Upgrade to 8K textures">
                 <span id="hd-status">HD</span>
             </button>

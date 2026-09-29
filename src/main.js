@@ -46,6 +46,7 @@ import {
 import { getActiveShower, buildMeteorShowerEffect } from './meteorShowers.js';
 import { buildAurora } from './aurora.js';
 import { buildSatelliteTracker } from './satellites.js';
+import { createFollowCamera } from './followCamera.js';
 import {
     getSimulatedTime,
     setLive,
@@ -711,26 +712,56 @@ function updateAuroraHud() {
 updateAuroraHud();
 setInterval(updateAuroraHud, 5000);
 
-// --- Live satellite tracking ------------------------------------------------
+// --- Live ISS tracking + Follow mode ----------------------------------------
 // Real Celestrak orbital elements, propagated with satellite.js (SGP4). Only
 // shown in live mode — see src/satellites.js for why scrubbed dates hide it.
-const hudSatellitesSection = document.getElementById('hud-satellites');
-const hudSatellitesRows = document.getElementById('hud-satellites-rows');
+const hudIssSection = document.getElementById('hud-iss');
+const hudIssOver = document.getElementById('hud-iss-over');
+const hudIssAlt = document.getElementById('hud-iss-alt');
+const hudIssSpeed = document.getElementById('hud-iss-speed');
+const hudIssSun = document.getElementById('hud-iss-sun');
+const followBtn = document.getElementById('follow-btn');
+
 const satelliteTracker = buildSatelliteTracker();
 earthSpin.add(satelliteTracker.group);
 
-function updateSatellitesHud() {
-    const info = satelliteTracker.getTrackedInfo();
-    if (getMode() !== 'live' || info.length === 0) {
-        hudSatellitesSection.style.display = 'none';
+const FOLLOW_LABEL = 'follow iss';
+const followCamera = createFollowCamera(camera, {
+    getFocus: () => satelliteTracker.getFocus(),
+    onStop: () => {
+        followBtn.removeAttribute('data-active');
+        followBtn.textContent = FOLLOW_LABEL;
+    },
+});
+
+followBtn.addEventListener('click', () => {
+    if (followCamera.isActive()) {
+        followCamera.stop();
+    } else if (followCamera.start()) {
+        followBtn.setAttribute('data-active', '');
+        followBtn.textContent = 'following iss';
+    }
+});
+// Recenter means "take me back to the default view" — that ends a follow too.
+document.getElementById('recenter-btn').addEventListener('click', () => followCamera.stop());
+
+function updateIssHud() {
+    const info = satelliteTracker.getInfo();
+    if (getMode() !== 'live' || !info) {
+        hudIssSection.style.display = 'none';
+        followBtn.hidden = true;
+        followCamera.stop();
         return;
     }
-    hudSatellitesSection.style.display = '';
-    hudSatellitesRows.innerHTML = info
-        .map((s) => `<div class="row"><span class="k">${s.name}</span><span class="v dim">${Math.round(s.altitudeKm)} km</span></div>`)
-        .join('');
+    hudIssSection.style.display = '';
+    followBtn.hidden = false;
+    hudIssOver.textContent = info.region.name;
+    hudIssAlt.textContent = `${Math.round(info.altitudeKm)} km`;
+    hudIssSpeed.textContent = `${Math.round(info.speedKmh).toLocaleString()} km/h`;
+    hudIssSun.textContent = info.sunlit ? 'In sunlight' : 'In Earth\u2019s shadow';
 }
-setInterval(updateSatellitesHud, 2000);
+setInterval(updateIssHud, 1000);
+
 
 // --- Post-processing: bloom --------------------------------------------------
 // Bright pixels (Sun marker, city lights on Earth's night side) glow softly.
@@ -935,6 +966,7 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     composer.setSize(window.innerWidth, window.innerHeight);
     bloomPass.setSize(window.innerWidth, window.innerHeight);
+    satelliteTracker.setResolution(window.innerWidth, window.innerHeight);
 });
 
 // --- Render loop -------------------------------------------------------------
@@ -966,7 +998,9 @@ function animate() {
     if (tickClouds) tickClouds(dtSec);
     meteorEffect.tick(dtSec, currentShowerInfo);
     aurora.tick(dtSec);
-    satelliteTracker.tick(now, getMode() === 'live');
+    const live = getMode() === 'live';
+    satelliteTracker.tick(now, live, { dtSec, cameraPosition: camera.position });
+    if (!live) followCamera.stop();
 
     hudRotation.textContent = state.rotationAngle.toFixed(3) + '°';
     hudTime.textContent = formatUTC(now);
@@ -974,7 +1008,12 @@ function animate() {
     // Skip OrbitControls entirely while the intro dolly owns camera.position —
     // it's disabled for input already, but this also keeps it from touching
     // the camera at all until playIntro hands control back.
-    if (!introActive) controls.update();
+    // Follow moves the camera first; OrbitControls then re-derives its state
+    // from the new position, so user orbit/zoom still layers on top.
+    if (!introActive) {
+        followCamera.update();
+        controls.update();
+    }
     composer.render();
 }
 
