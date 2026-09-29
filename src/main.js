@@ -35,7 +35,7 @@ import { buildSun } from './sunSurface.js';
 import { buildLocationPin } from './locationPin.js';
 import { resolveQuery } from './search.js';
 import { fetchHistoricalEarthTexture, isDateInGibsRange } from './historicalTexture.js';
-import { shouldAutoUpgrade, upgradeToHighRes } from './textureUpgrade.js';
+import { upgradeToHighRes } from './textureUpgrade.js';
 import { playIntro } from './intro.js';
 import {
     readSharedStateFromUrl,
@@ -265,7 +265,6 @@ buildEarthMaterial(earth).then(({ material, updateShader }) => {
     baseDayTexture = material.uniforms.uDayTexture.value;
     updateEarthShader = updateShader;
     console.log('Earth textures loaded, shader material active.');
-    maybeStartHighResUpgrade();
 }).catch((err) => {
     console.error('Failed to load Earth textures:', err);
 });
@@ -280,33 +279,26 @@ buildClouds().then(({ mesh, setSunDirection, tick }) => {
     setCloudSunDirection = setSunDirection;
     tickClouds = tick;
     console.log('Cloud layer loaded.');
-    maybeStartHighResUpgrade();
 }).catch((err) => {
     console.error('Failed to load cloud texture:', err);
 });
 
-// --- Progressive HD upgrade --------------------------------------------------
-// Kick off once all 2K materials are ready. Auto-triggers on capable devices;
-// manual override via the HD button in the UI.
+// --- HD textures -------------------------------------------------------------
+// HD is opt in: nothing loads until the button is pressed. The full set needs
+// about 1 GB of graphics memory, more than an integrated GPU can spare. When
+// the GPU runs out, the browser drops the WebGL context and the page goes blank.
 
 const hdButton = document.getElementById('hd-toggle');
 const hdStatus = document.getElementById('hd-status');
 let hdUpgradeStarted = false;
 
-function maybeStartHighResUpgrade() {
+function startHighResUpgrade() {
     if (hdUpgradeStarted) return;
     if (!materialRefs.earthMaterial || !materialRefs.cloudMaterial) return;
-    if (shouldAutoUpgrade()) {
-        startHighResUpgrade('auto');
-    }
-}
-
-function startHighResUpgrade(trigger) {
-    if (hdUpgradeStarted) return;
     hdUpgradeStarted = true;
     hdButton.setAttribute('data-loading', '1');
     hdStatus.textContent = 'HD loading…';
-    console.log(`[HD] upgrade started (${trigger})`);
+    console.log('[HD] upgrade started');
 
     upgradeToHighRes(materialRefs, (which) => {
         console.log('[HD] loaded:', which);
@@ -332,7 +324,7 @@ function startHighResUpgrade(trigger) {
     });
 }
 
-hdButton.addEventListener('click', () => startHighResUpgrade('manual'));
+hdButton.addEventListener('click', () => startHighResUpgrade());
 
 // --- Time-scrub controls -----------------------------------------------------
 // Slider spans ± 180 days from "now at page load." Speed presets let you

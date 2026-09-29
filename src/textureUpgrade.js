@@ -1,13 +1,13 @@
-// Progressive texture upgrade: swap 2K → 8K after initial paint.
+// Optional HD textures, loaded only when the HD button is pressed.
 //
 // Strategy:
-//   1. Ship 2K by default (~3 MB total, fast initial load).
-//   2. After the page is interactive, optionally load 8K in the background
-//      (~19 MB) and swap the uniforms in the shader materials.
-//   3. Skip auto-upgrade on data-saver connections and on narrow viewports
-//      (small screens don't benefit from 8K anyway).
-//   4. Allow manual override via the HD button in the UI.
-//   5. Each texture upgrades independently: one failing (bad network, CDN
+//   1. Ship 2K by default (about 3 MB in total, fast first paint).
+//   2. When the HD button is pressed, load the big set in the background and
+//      swap the uniforms in the shader materials.
+//   3. Nothing loads by itself. The full set needs about 1 GB of graphics
+//      memory, more than an integrated GPU can spare. When the GPU runs out,
+//      the browser drops the WebGL context and the page goes blank.
+//   4. Each texture upgrades independently: one failing (bad network, CDN
 //      hiccup) doesn't block or revert the others. See upgradeToHighRes.
 
 import * as THREE from 'three';
@@ -25,19 +25,6 @@ const HIGH_RES = {
     clouds: '/textures/earth_clouds_8k.jpg',
     moon: '/textures/moon_8k.jpg',
 };
-
-/**
- * Whether the current environment should auto-upgrade to 8K without
- * the user opting in explicitly.
- */
-export function shouldAutoUpgrade() {
-    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    if (conn?.saveData) return false;
-    if (conn?.effectiveType && ['slow-2g', '2g', '3g'].includes(conn.effectiveType)) return false;
-    // Only wide displays benefit from 8K. Small screens waste bandwidth.
-    if (window.innerWidth < 1400) return false;
-    return true;
-}
 
 // Load one texture with the same colorSpace policy used elsewhere.
 function loadTexture(url, colorSpace) {
@@ -64,7 +51,7 @@ function swapUniformTexture(material, uniformName, newTexture) {
 }
 
 /**
- * Upgrade Earth + cloud + moon textures to 8K in the background.
+ * Upgrade Earth + cloud + moon textures to the HD set in the background.
  *
  * Each of the (up to) four textures loads and swaps in independently, so a
  * failure on one (bad network, CDN hiccup on that single file) does not
