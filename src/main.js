@@ -264,7 +264,7 @@ buildEarthMaterial(earth).then(({ material, updateShader }) => {
     materialRefs.earthMaterial = material;
     baseDayTexture = material.uniforms.uDayTexture.value;
     updateEarthShader = updateShader;
-    console.log('Earth textures loaded — shader material active.');
+    console.log('Earth textures loaded, shader material active.');
     maybeStartHighResUpgrade();
 }).catch((err) => {
     console.error('Failed to load Earth textures:', err);
@@ -321,13 +321,13 @@ function startHighResUpgrade(trigger) {
         } else if (succeeded.length === 0) {
             hdUpgradeStarted = false;
             hdStatus.textContent = 'HD failed';
-            console.error('[HD] upgrade failed — no textures loaded:', failed);
+            console.error('[HD] upgrade failed, no textures loaded:', failed);
         } else {
             // Some textures upgraded, some didn't — allow retrying just the
             // failed ones rather than reporting total failure.
             hdUpgradeStarted = false;
             hdStatus.textContent = `HD partial (${failed.length} failed)`;
-            console.warn('[HD] partial upgrade — failed:', failed.map((f) => f.name));
+            console.warn('[HD] partial upgrade, failed:', failed.map((f) => f.name));
         }
     });
 }
@@ -541,7 +541,7 @@ function renderResultDate(date, matchedText) {
 
 function renderResultMiss(query) {
     searchResult.innerHTML =
-        `<div class="r-miss">No match for “${escapeHtml(query)}” — try a specific date like ` +
+        `<div class="r-miss">No match for “${escapeHtml(query)}”. Try a specific date like ` +
         `<em>August 29 2005</em> or a named event like <em>Apollo 11</em>.</div>`;
     searchResult.setAttribute('data-visible', '1');
 }
@@ -880,7 +880,7 @@ shareMenu.addEventListener('click', (e) => e.stopPropagation());
 shareCopyLinkBtn.addEventListener('click', async () => {
     const url = buildShareUrl(getSimulatedTime(), camera.position);
     const ok = await copyToClipboard(url);
-    shareCopyLinkBtn.textContent = ok ? 'Copied!' : 'Copy failed — select & copy manually';
+    shareCopyLinkBtn.textContent = ok ? 'Copied!' : 'Copy failed, please copy it by hand';
     setTimeout(() => {
         shareCopyLinkBtn.textContent = 'Copy link to this moment';
         closeShareMenu();
@@ -897,7 +897,7 @@ shareDownloadBtn.addEventListener('click', () => {
 shareTweetBtn.addEventListener('click', () => {
     const url = buildShareUrl(getSimulatedTime(), camera.position);
     const now = getSimulatedTime();
-    const text = `What Earth looked like at ${formatUTC(now)} — astronomically accurate, live in the browser.`;
+    const text = `What Earth looked like at ${formatUTC(now)}, drawn live in the browser from real astronomical data.`;
     window.open(buildTweetIntentUrl(url, text), '_blank', 'noopener,noreferrer');
     closeShareMenu();
 });
@@ -1084,4 +1084,4 @@ function animate() {
 
 animate();
 
-console.log('Earth Project — Phase 5 scene initialized');
+console.log('Earth Project is running.');

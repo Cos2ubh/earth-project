@@ -5,6 +5,14 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="theme-color" content="#000000" />
         <title>Earth Project</title>
+        <meta
+            name="description"
+            content="A real time 3D Earth in your browser. True axial tilt and rotation, with the Sun, Moon, ISS, aurora and meteor showers computed from astronomical data."
+        />
+        <link
+            rel="icon"
+            href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3CradialGradient id='g' cx='36%25' cy='32%25' r='75%25'%3E%3Cstop offset='0' stop-color='%236fb6ff'/%3E%3Cstop offset='0.55' stop-color='%231b5fb4'/%3E%3Cstop offset='1' stop-color='%23081a3a'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='30' fill='url(%23g)'/%3E%3C/svg%3E"
+        />
         <style>
             html,
             body {
@@ -492,7 +500,7 @@
 
         <div id="search-bar" class="chrome-panel">
             <input id="search-input" type="text"
-                   placeholder="Ask anything —  when did Katrina hit  ·  August 29 2005  ·  2 months ago"
+                   placeholder="Ask anything: when did Katrina hit  ·  August 29 2005  ·  2 months ago"
                    autocomplete="off" spellcheck="false" />
             <div id="search-result"></div>
         </div>
@@ -580,7 +588,7 @@
 
         <div id="scrub-bar" class="chrome-panel">
             <div id="scrub-controls">
-                <button id="live-btn" type="button" title="Return to real-time">LIVE</button>
+                <button id="live-btn" type="button" title="Return to real time">LIVE</button>
                 <button id="play-pause" type="button" data-state="paused" title="Play / pause time scrubbing">
                     <span class="play-icon">▶</span>
                     <span class="pause-icon">❚❚</span>
@@ -598,7 +606,7 @@
 
         <div id="disclaimer" class="chrome-panel">
             <span class="live">Live data · updates each frame</span>
-            <span>Not to scale — positions are astronomically accurate, sizes are not.</span>
+            <span>Not to scale. Positions come from real astronomical data, sizes are exaggerated.</span>
         </div>
 
         <script type="module" src="/src/main.js"></script>
