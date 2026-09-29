@@ -1,4 +1,4 @@
-// Geographic grid — meridians + parallels drawn on a unit sphere.
+// Geographic grid: meridians + parallels drawn on a unit sphere.
 //
 // Convention (matches earthSpin's local frame):
 //   local +Z = prime meridian (0° longitude) at the equator

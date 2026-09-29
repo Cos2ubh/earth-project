@@ -1,4 +1,4 @@
-// CLI harness — logs the current Earth state to the terminal so we can
+// CLI harness: logs the current Earth state to the terminal so we can
 // cross-check the numbers against a reference (timeanddate.com etc).
 // Run with: node scripts/verify-astronomy.js
 

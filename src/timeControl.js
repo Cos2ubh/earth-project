@@ -1,11 +1,11 @@
-// Simulated time — every astronomy call in the app reads through getSimulatedTime()
+// Simulated time: every astronomy call in the app reads through getSimulatedTime()
 // instead of new Date() directly, so the whole visualization can be pointed at
 // any moment in time (past, present, future) without touching the physics code.
 //
 // Modes:
-//   live      — return real wall-clock time
-//   paused    — stay frozen at a fixed timestamp
-//   scrubbing — advance from a baseline at a variable speed multiplier
+//   live:      return real wall-clock time
+//   paused:    stay frozen at a fixed timestamp
+//   scrubbing: advance from a baseline at a variable speed multiplier
 //
 // The slider UI drives the mode. The scene doesn't care which mode is active;
 // it just reads getSimulatedTime() each frame.

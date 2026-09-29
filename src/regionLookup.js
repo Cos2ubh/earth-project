@@ -1,8 +1,8 @@
-// "What is the ISS over?" — an offline lat/lon → place-name lookup.
+// "What is the ISS over?" An offline lat/lon → place-name lookup.
 //
 // Land: a baked 1° country grid (src/regionGrid.js, generated from Natural
 // Earth by scripts/generate-region-grid.mjs). Water: named seas first (a
-// handful of circular stamps — good enough at 1° resolution), then the four
+// handful of circular stamps, good enough at 1° resolution), then the four
 // oceans split along their conventional meridians.
 //
 // Accuracy note (same spirit as the other "label the artistic license"

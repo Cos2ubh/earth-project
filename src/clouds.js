@@ -1,4 +1,4 @@
-// Cloud layer — a transparent sphere slightly outside Earth's surface, rendered
+// Cloud layer: a transparent sphere slightly outside Earth's surface, rendered
 // with a custom shader that:
 //   - Uses the cloud texture's luminance as alpha (white pixels = opaque clouds,
 //     black = clear sky)
@@ -8,7 +8,7 @@
 //     with the continents underneath
 //
 // Cloud sphere sits just above Earth (radius 1.008 vs Earth's 1.0). Rotates
-// slowly and independently — real clouds don't co-rotate with the surface,
+// slowly and independently: real clouds don't co-rotate with the surface,
 // they drift with the atmospheric circulation at ~100 km/h.
 
 import * as THREE from 'three';
@@ -55,9 +55,9 @@ const FRAGMENT_SHADER = /* glsl */ `
 
 /**
  * Build the cloud layer. Returns { mesh, setSunDirection(vec3), tick(dt) }.
- *   setSunDirection — call every frame with the WORLD-space sun direction;
+ *   setSunDirection: call every frame with the WORLD-space sun direction;
  *     the material transforms into local frame internally.
- *   tick — call every frame with elapsed seconds; advances the cloud layer's
+ *   tick: call every frame with elapsed seconds; advances the cloud layer's
  *     independent slow rotation.
  */
 export async function buildClouds() {
@@ -92,7 +92,7 @@ export async function buildClouds() {
         material.uniforms.uSunDirectionLocal.value.copy(scratchWorldSun);
     }
 
-    // Independent rotation — clouds drift slowly relative to the surface.
+    // Independent rotation: clouds drift slowly relative to the surface.
     // 1 full rotation per real day is exaggerated (real winds are much slower)
     // but reads as gentle motion, which is what we want visually.
     const CLOUD_ROTATION_RATE = (2 * Math.PI) / 86400; // rad/sec

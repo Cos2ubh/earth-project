@@ -1,4 +1,4 @@
-// Follow-the-ISS camera — glides to a chase view behind the ISS, then keeps
+// Follow-the-ISS camera: glides to a chase view behind the ISS, then keeps
 // that view as the station orbits, so the continents and the day/night line
 // slide by underneath it.
 //
@@ -10,14 +10,14 @@
 //   2. Chase: each frame the camera is rotated about the globe's centre by the
 //      same rotation that carried the ISS since the previous frame. That keeps
 //      the chosen viewpoint locked to the station while leaving the user free
-//      to orbit and zoom — their input simply adds on top, instead of being
+//      to orbit and zoom: their input simply adds on top, instead of being
 //      fought by a spring pulling the camera back.
 //
 // The camera must be free of any parent, look at the origin (OrbitControls
 // with target 0,0,0), and this module must run BEFORE controls.update().
 //
 // Following stops on: a second click, Recenter, the tracker losing the ISS,
-// or leaving live mode (the caller checks these — see main.js).
+// or leaving live mode (the caller checks these; see main.js).
 
 import * as THREE from 'three';
 

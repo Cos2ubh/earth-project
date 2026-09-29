@@ -1,9 +1,9 @@
-// Earth material — custom ShaderMaterial. Blends day/night textures based on
+// Earth material: custom ShaderMaterial. Blends day/night textures based on
 // dot(surface normal, sun direction), adds specular highlights on oceans (from
 // the specular map), and perturbs surface normals with the normal map for
 // subtle terrain relief that catches light at grazing angles.
 //
-// Everything is computed in the mesh's LOCAL frame — the Earth mesh sits inside
+// Everything is computed in the mesh's LOCAL frame: the Earth mesh sits inside
 // earthSpin (rotates) inside earthGroup (tilted), so world-space Sun and world-
 // space camera positions must be transformed into local frame each frame.
 //
@@ -12,16 +12,16 @@
 //   Standard equirectangular Earth textures put prime meridian at u=0.5.
 //   So we shift the sample UV by +0.25 in the shader.
 //
-// Normal mapping uses analytical tangent-space TBN — for a sphere, tangent
+// Normal mapping uses analytical tangent-space TBN: for a sphere, tangent
 // vectors can be derived on the fly from the position (T = cross(up, N),
 // B = cross(N, T)). This is proper tangent-space normal mapping: mountains
 // catch light on the correct side depending on where the sun is, giving
 // visible relief instead of just a texture-y bump.
 //
 // Ocean shading has two contributions:
-//   - Sharp specular sun glint (Blinn-Phong, high exponent) — the bright dot
+//   - Sharp specular sun glint (Blinn-Phong, high exponent): the bright dot
 //     where the sun reflects directly off water
-//   - Fresnel sky reflection — water gets brighter at glancing angles because
+//   - Fresnel sky reflection: water gets brighter at glancing angles because
 //     it reflects the sky. This is what makes real oceans look "wet."
 
 import * as THREE from 'three';
@@ -82,7 +82,7 @@ const FRAGMENT_SHADER = /* glsl */ `
         // Analytical tangent-space TBN for a sphere.
         // Tangent points east along a parallel, bitangent points north along a
         // meridian, normal is the geometric surface normal. Degenerates exactly
-        // at the poles — acceptable since polar ice hides the artifact.
+        // at the poles, acceptable since polar ice hides the artifact.
         vec3 N_geom = normalize(vNormalLocal);
         vec3 T = normalize(cross(vec3(0.0, 1.0, 0.0), N_geom));
         vec3 B = normalize(cross(N_geom, T));
@@ -109,7 +109,7 @@ const FRAGMENT_SHADER = /* glsl */ `
         vec3 glintColor = vec3(1.4, 1.28, 1.05) * sunGlint * specMask * dayWeight * uSpecularStrength;
 
         // --- Ocean: Fresnel sky reflection.
-        // Water gets more reflective at glancing angles — this is what makes
+        // Water gets more reflective at glancing angles, which is what makes
         // seas visibly "wet" from orbit. Tinted a soft pale blue to fake the
         // sky the water is reflecting.
         float fresnel = pow(1.0 - NdotV, 4.0);
@@ -127,7 +127,7 @@ const FRAGMENT_SHADER = /* glsl */ `
 
 /**
  * Build the Earth shader material. Returns { material, updateShader(worldSunDir, camera) }.
- * Call updateShader every frame — the material handles world→local transforms.
+ * Call updateShader every frame; the material handles world→local transforms.
  */
 export async function buildEarthMaterial(mesh) {
     const loader = new THREE.TextureLoader();

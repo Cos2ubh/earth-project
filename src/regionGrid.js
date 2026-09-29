@@ -1,4 +1,4 @@
-// GENERATED FILE — do not edit by hand.
+// GENERATED FILE: do not edit by hand.
 // Produced by scripts/generate-region-grid.mjs from Natural Earth 50m
 // countries (public domain, via the world-atlas package).
 //

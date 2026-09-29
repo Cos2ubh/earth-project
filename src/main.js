@@ -1,4 +1,4 @@
-// Earth Project — entry point.
+// Earth Project: entry point.
 //
 // Coordinate convention (locked in Phase 3):
 //   world +Y = ecliptic north (perpendicular to Earth's orbital plane)
@@ -91,7 +91,7 @@ const hudYouLocalTime = document.getElementById('hud-you-local-time');
 const hudYouSeason = document.getElementById('hud-you-season');
 
 // Browser's IANA time zone (e.g. "Asia/Kolkata", "America/New_York").
-// This is the user's system-configured zone — matches their phone / watch.
+// This is the user's system-configured zone, which matches their phone / watch.
 const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 // Formatter for wall-clock time in the user's zone, including short zone name.
@@ -169,7 +169,7 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-// OrbitControls — click-drag to orbit, scroll to zoom. Panning disabled so
+// OrbitControls: click-drag to orbit, scroll to zoom. Panning disabled so
 // Earth stays centered as the reference point. Damping for a smoother feel.
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
@@ -189,9 +189,9 @@ document.getElementById('recenter-btn').addEventListener('click', () => {
 // tween; playIntro re-enables it (via introActive flag below) once it's done
 // or skipped. See src/intro.js for the full rationale.
 //
-// If the URL carries a shared moment (see src/shareMoment.js — someone's
-// "share this view" link), honor it instead of the generic intro: jump
-// straight to that time and camera angle, no dolly, no dramatic reveal —
+// If the URL carries a shared moment (a "share this view" link, see
+// src/shareMoment.js), honor it instead of the generic intro: jump
+// straight to that time and camera angle, no dolly, no dramatic reveal:
 // the whole point of a shared link is landing exactly where they left it.
 let introActive = true;
 const sharedState = readSharedStateFromUrl();
@@ -218,11 +218,11 @@ scene.add(earthGroup);
 const earthSpin = new THREE.Group();
 earthGroup.add(earthSpin);
 
-// Higher subdivisions for smooth terrain displacement — 256×256 = ~65k
+// Higher subdivisions for smooth terrain displacement: 256×256 = ~65k
 // vertices, well within modern GPU headroom. Reduce for low-end mobile if
 // framerate suffers.
 const earthGeometry = new THREE.SphereGeometry(1, 256, 256);
-// Placeholder material — swapped for the shader material once textures load.
+// Placeholder material, swapped for the shader material once textures load.
 // Keeps the sphere visible during the async texture fetch (typically < 200ms).
 const placeholderMaterial = new THREE.MeshBasicMaterial({ color: 0x1a2a3a });
 const earth = new THREE.Mesh(earthGeometry, placeholderMaterial);
@@ -270,7 +270,7 @@ buildEarthMaterial(earth).then(({ material, updateShader }) => {
     console.error('Failed to load Earth textures:', err);
 });
 
-// Cloud layer — asynchronously loaded, added to earthSpin so it stays tied
+// Cloud layer: asynchronously loaded, added to earthSpin so it stays tied
 // to Earth's tilt but rotates independently on its own +Y (see clouds.js).
 let setCloudSunDirection = null;
 let tickClouds = null;
@@ -311,7 +311,7 @@ function startHighResUpgrade(trigger) {
     upgradeToHighRes(materialRefs, (which) => {
         console.log('[HD] loaded:', which);
     }).then(({ succeeded, failed }) => {
-        // Partial success is still success — only the textures that actually
+        // Partial success is still success: only the textures that actually
         // failed get retried; the ones that loaded stay loaded.
         hdButton.removeAttribute('data-loading');
         if (failed.length === 0) {
@@ -323,7 +323,7 @@ function startHighResUpgrade(trigger) {
             hdStatus.textContent = 'HD failed';
             console.error('[HD] upgrade failed, no textures loaded:', failed);
         } else {
-            // Some textures upgraded, some didn't — allow retrying just the
+            // Some textures upgraded, some didn't. Allow retrying just the
             // failed ones rather than reporting total failure.
             hdUpgradeStarted = false;
             hdStatus.textContent = `HD partial (${failed.length} failed)`;
@@ -403,7 +403,7 @@ liveBtn.addEventListener('click', () => {
 speedButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
         const alreadyActive = btn.hasAttribute('data-active');
-        // Always clear all first — makes the group behave like a toggle set.
+        // Always clear all first, which makes the group behave like a toggle set.
         speedButtons.forEach((b) => b.removeAttribute('data-active'));
 
         if (alreadyActive) {
@@ -413,7 +413,7 @@ speedButtons.forEach((btn) => {
             return;
         }
 
-        // New speed picked — activate visually and start / update scrubbing.
+        // New speed picked: activate visually and start / update scrubbing.
         btn.setAttribute('data-active', '1');
         const speed = parseInt(btn.dataset.speed, 10);
         if (getMode() === 'scrubbing') {
@@ -431,7 +431,7 @@ liveBtn.setAttribute('data-active', '1');
 document.querySelector('.speed-btn[data-speed="3600"]').setAttribute('data-active', '1');
 playPauseBtn.setAttribute('data-state', 'paused');
 
-// Refresh the scrub UI on its own tick — every 200ms is plenty for reading.
+// Refresh the scrub UI on its own tick; every 200ms is plenty for reading.
 setInterval(() => {
     if (getMode() !== 'paused') syncSliderFromSimulatedTime();
     updateScrubLabel();
@@ -445,10 +445,10 @@ let locationPin = null;
 
 function seasonFor(sunEclipticLon, latitude) {
     // Astronomical seasons in the northern hemisphere:
-    //   λ ∈ [ 0°, 90°) — spring
-    //   λ ∈ [90°, 180°) — summer
-    //   λ ∈ [180°, 270°) — autumn
-    //   λ ∈ [270°, 360°) — winter
+    //   λ ∈ [ 0°, 90°): spring
+    //   λ ∈ [90°, 180°): summer
+    //   λ ∈ [180°, 270°): autumn
+    //   λ ∈ [270°, 360°): winter
     // Southern hemisphere: swap summer↔winter and spring↔autumn.
     const northern = latitude >= 0;
     const λ = ((sunEclipticLon % 360) + 360) % 360;
@@ -629,7 +629,7 @@ searchInput.addEventListener('keydown', (e) => {
     }
 });
 
-// Focus search on "/" like GitHub / Slack — small quality-of-life shortcut.
+// Focus search on "/" like GitHub / Slack, a small quality-of-life shortcut.
 window.addEventListener('keydown', (e) => {
     if (e.key === '/' && document.activeElement !== searchInput) {
         e.preventDefault();
@@ -638,19 +638,19 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-// Lat/lon grid — meridians every 30°, parallels every 30°, equator and
+// Lat/lon grid: meridians every 30°, parallels every 30°, equator and
 // prime meridian highlighted. Sits as a child of earthSpin so it rotates
 // with Earth. Replaces the Phase 4 prime-meridian marker (now redundant
 // since the prime meridian is drawn as a full amber line).
 const latLonGrid = buildLatLonGrid();
 earthSpin.add(latLonGrid);
 
-// Atmosphere glow — slightly larger transparent shell around Earth,
+// Atmosphere glow: slightly larger transparent shell around Earth,
 // child of earthGroup so it stays with Earth even under the axial tilt.
 const atmosphere = buildAtmosphere();
 earthGroup.add(atmosphere);
 
-// Rotation axis — sits in the tilted frame, doesn't spin.
+// Rotation axis: sits in the tilted frame, doesn't spin.
 const axisPoints = [
     new THREE.Vector3(0, -1.35, 0),
     new THREE.Vector3(0, 1.35, 0),
@@ -669,10 +669,10 @@ earthGroup.add(axisLine);
 // Directional light from the Sun. Position gets updated every frame.
 // Intensity 3.0 keeps the day side well-lit against our near-black background.
 const sunLight = new THREE.DirectionalLight(0xffffff, 3.0);
-sunLight.position.set(1, 0, 0); // placeholder — overwritten each frame
+sunLight.position.set(1, 0, 0); // placeholder, overwritten each frame
 scene.add(sunLight);
 
-// A whisper of ambient so the night side isn't dead black — helps the sphere
+// A whisper of ambient so the night side isn't dead black, which helps the sphere
 // read as a globe even at extreme phase angles. Keep this very low; the whole
 // point of the visualization is that the terminator is visible.
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.04);
@@ -680,7 +680,7 @@ scene.add(ambientLight);
 
 // --- Sun marker --------------------------------------------------------------
 // The Sun, placed in its real direction at a distance chosen for visual
-// clarity — NOT to scale (per the disclaimer). It is a procedural star, not a
+// clarity, so NOT to scale (per the disclaimer). It is a procedural star, not a
 // flat disc: boiling granulation, sunspots, limb darkening and a corona
 // (see src/sunSurface.js). `sunMarker` is the group that gets positioned.
 
@@ -690,7 +690,7 @@ const sunMarker = sun.group;
 scene.add(sunMarker);
 
 // --- Moon --------------------------------------------------------------------
-// Positioned at artistic scale — real Moon distance is ~60 Earth radii;
+// Positioned at artistic scale: real Moon distance is ~60 Earth radii;
 // we compress to ~5 units so it's visible next to Earth (scale disclaimer
 // covers this). Real Moon:Earth radius ratio is 0.273; we use 0.15 for
 // visual balance at the compressed distance.
@@ -709,7 +709,7 @@ scene.add(moon);
 // Register the moon material with the HD-upgrade path (declared earlier).
 materialRefs.moonMaterial = moonMaterial;
 
-// Moon orbit ring — thin traced path showing where the Moon travels around
+// Moon orbit ring: thin traced path showing where the Moon travels around
 // Earth over one sidereal month. Uses the same astronomy engine so the 5.14°
 // inclination and orbital plane orientation come from the ephemeris.
 const moonOrbit = buildMoonOrbit(MOON_SCENE_DISTANCE);
@@ -740,7 +740,7 @@ scene.add(meteorEffect.group);
 
 // --- Aurora ---------------------------------------------------------------
 // Polar glow bands sized/brightened by the real, live NOAA planetary Kp
-// index (see src/aurora.js). Child of earthSpin, not earthGroup — the
+// index (see src/aurora.js). Child of earthSpin, not earthGroup: the
 // auroral oval is pinned to the geomagnetic pole, which turns with the
 // planet, so it needs to spin with the surface like the lat/lon grid does.
 const hudAuroraKp = document.getElementById('hud-aurora-kp');
@@ -758,7 +758,7 @@ setInterval(updateAuroraHud, 5000);
 
 // --- Live ISS tracking + Follow mode ----------------------------------------
 // Real Celestrak orbital elements, propagated with satellite.js (SGP4). Only
-// shown in live mode — see src/satellites.js for why scrubbed dates hide it.
+// shown in live mode; see src/satellites.js for why scrubbed dates hide it.
 const hudIssSection = document.getElementById('hud-iss');
 const hudIssOver = document.getElementById('hud-iss-over');
 const hudIssAlt = document.getElementById('hud-iss-alt');
@@ -786,7 +786,7 @@ followBtn.addEventListener('click', () => {
         followBtn.textContent = 'following iss';
     }
 });
-// Recenter means "take me back to the default view" — that ends a follow too.
+// Recenter means "take me back to the default view", so that ends a follow too.
 document.getElementById('recenter-btn').addEventListener('click', () => followCamera.stop());
 
 function updateIssHud() {
@@ -822,12 +822,12 @@ const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
     0.6,   // strength
     0.5,   // radius
-    0.85,  // threshold — only pixels above this brightness bloom
+    0.85,  // threshold: only pixels above this brightness bloom
 );
 composer.addPass(bloomPass);
 
 // OutputPass handles tone mapping + color space conversion cleanly at the end
-// of the chain — without it, colors can look washed out after bloom.
+// of the chain. Without it, colors can look washed out after bloom.
 const outputPass = new OutputPass();
 composer.addPass(outputPass);
 
@@ -873,7 +873,7 @@ shareBtn.addEventListener('click', (e) => {
     }
 });
 
-// Close the menu on any outside click — standard dropdown behavior.
+// Close the menu on any outside click, standard dropdown behavior.
 window.addEventListener('click', () => closeShareMenu());
 shareMenu.addEventListener('click', (e) => e.stopPropagation());
 
@@ -968,7 +968,7 @@ function updateSlow() {
     hudMoonIllum.textContent = (state.moon.phaseFraction * 100).toFixed(1) + '%';
     hudMoonDist.textContent = Math.round(state.moon.distanceKm).toLocaleString() + ' km';
 
-    // Extra Sun/Moon readouts — real ephemeris values, see astronomy.js.
+    // Extra Sun/Moon readouts: real ephemeris values, see astronomy.js.
     const sunInfo = getSunDetails(now);
     hudSunRa.textContent = formatRA(sunInfo.raHours);
     hudSunDec.textContent = formatLat(sunInfo.decDeg);
@@ -995,12 +995,12 @@ function updateSlow() {
     }
 }
 
-// Cached by updateSlow (1/sec — shower windows span days, no need to
+// Cached by updateSlow (1/sec, shower windows span days, no need to
 // recompute every frame) and read by the per-frame meteor streak tick.
 let currentShowerInfo = null;
 
 // Eclipse search is more expensive than the per-second state update, and the
-// answers only change once every ~2 weeks — recompute every 30 seconds.
+// answers only change once every ~2 weeks, so recompute every 30 seconds.
 function formatEclipse(e) {
     if (!e) return '—';
     const iso = e.peakDate.toISOString().slice(0, 10);
@@ -1070,7 +1070,7 @@ function animate() {
     hudRotation.textContent = state.rotationAngle.toFixed(3) + '°';
     hudTime.textContent = formatUTC(now);
 
-    // Skip OrbitControls entirely while the intro dolly owns camera.position —
+    // Skip OrbitControls entirely while the intro dolly owns camera.position:
     // it's disabled for input already, but this also keeps it from touching
     // the camera at all until playIntro hands control back.
     // Follow moves the camera first; OrbitControls then re-derives its state

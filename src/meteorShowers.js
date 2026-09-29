@@ -1,14 +1,14 @@
-// Meteor showers — real annual radiant dates, with a stylized streak effect
+// Meteor showers: real annual radiant dates, with a stylized streak effect
 // when the simulated date falls within a shower's active window.
 //
 // Honesty note (matching the project's "label the artistic license" habit,
 // same as the moon's compressed distance or the exaggerated terrain relief):
 // peak dates here are civil-calendar approximations (month/day, checked
-// against the shower's year-independent typical peak) — real peaks drift by
+// against the shower's year-independent typical peak). Real peaks drift by
 // up to a day or so year to year with Earth's orbital timing, and radiant
 // coordinates are the widely-published approximate epoch-2000 values, not
 // recomputed precession-corrected ones. Good enough for "hey, the Perseids
-// are happening tonight" — not for professional meteor observation planning.
+// are happening tonight", not for professional meteor observation planning.
 //
 // The rendered effect is stylized, not a physical simulation: real meteors
 // streak in with motion; these are brief additive flashes at a fixed
@@ -21,7 +21,7 @@ const OBLIQUITY_DEG = 23.4381;
 const STREAK_SPHERE_RADIUS = 55; // inside the star field (r=300), outside everything else
 
 // name, typical peak (month is 1-12), rough ZHR (zenithal hourly rate under
-// ideal dark skies — used only to weight how often streaks appear, not
+// ideal dark skies, used only to weight how often streaks appear, not
 // rendered literally), and the radiant's approximate RA (hours) / Dec (deg).
 export const METEOR_SHOWERS = [
     { name: 'Quadrantids', peakMonth: 1, peakDay: 3, zhr: 110, raHours: 15.33, decDeg: 49.5 },
@@ -42,7 +42,7 @@ const ACTIVE_WINDOW_DAYS = 2.5; // ± this many days around peak counts as "acti
 function daysFromPeak(date, shower) {
     const year = date.getUTCFullYear();
     // Compare against the peak in this year, last year, and next year, and
-    // take whichever is closest — handles showers near Jan 1 / Dec 31 wrap.
+    // take whichever is closest. Handles showers near Jan 1 / Dec 31 wrap.
     let best = Infinity;
     for (const y of [year - 1, year, year + 1]) {
         const peak = Date.UTC(y, shower.peakMonth - 1, shower.peakDay, 12);
@@ -96,7 +96,7 @@ const STREAK_LIFETIME_MS = FADE_IN_MS + HOLD_MS + FADE_OUT_MS;
  * Build the meteor streak system: a fixed pool of line segments, each
  * independently timed. Returns { group, tick(dtSec, activeShower) }.
  * `group` should be added directly to the scene (world space, not tied to
- * Earth's rotation — meteors burn up in the upper atmosphere, but at this
+ * Earth's rotation: meteors burn up in the upper atmosphere, but at this
  * stylized scale they just read as "somewhere out past Earth").
  */
 export function buildMeteorShowerEffect() {

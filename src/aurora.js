@@ -1,4 +1,4 @@
-// Aurora — a stylized green/magenta glow band near each pole, sized and
+// Aurora: a stylized green/magenta glow band near each pole, sized and
 // brightened by the real-time planetary Kp geomagnetic index from NOAA's
 // Space Weather Prediction Center. Higher Kp (more geomagnetic disturbance)
 // pushes the auroral oval equatorward and brightens it, same as a real
@@ -9,13 +9,13 @@
 // NOAA's OVATION-lite public guidance implies), not a magnetospheric model.
 // It's tuned for "does the sky look active tonight," not auroral forecasting.
 // The band also ignores the ~11° offset between the geomagnetic and
-// geographic poles — negligible at this stylized scale.
+// geographic poles, which is negligible at this stylized scale.
 //
 // Data fetch: NOAA's planetary Kp JSON is public, unauthenticated, and
-// CORS-enabled — fits the project's "no server, no API keys" rule the same
+// CORS-enabled, which fits the project's "no server, no API keys" rule the same
 // way historicalTexture.js's NASA GIBS fetch does. If the fetch fails
 // (offline, blocked), the effect falls back to a quiet default (Kp 2) rather
-// than disappearing or throwing — a stale-but-plausible sky beats a broken one.
+// than disappearing or throwing: a stale-but-plausible sky beats a broken one.
 
 import * as THREE from 'three';
 
@@ -52,7 +52,7 @@ function boundaryLatForKp(kp) {
 
 /**
  * Fetch the current planetary Kp index. Resolves to a number 0-9, or
- * FALLBACK_KP on any failure (network, timeout, malformed response) — this
+ * FALLBACK_KP on any failure (network, timeout, malformed response), since this
  * is live-decoration data, not something worth surfacing an error UI for.
  */
 export async function fetchCurrentKp() {
@@ -74,7 +74,7 @@ export async function fetchCurrentKp() {
     }
 }
 
-// Colatitude range each band's geometry spans (generous — the shader masks
+// Colatitude range each band's geometry spans (generous, since the shader masks
 // the actual visible band within it so Kp changes never need a rebuild).
 const BAND_COLAT_MIN_DEG = 15; // latitude 75°
 const BAND_COLAT_MAX_DEG = 60; // latitude 30°
@@ -113,7 +113,7 @@ function buildBandMesh(hemisphere) {
             void main() {
                 // South band's geometry is built mirrored, but sphere UV.v
                 // still runs pole-to-equator the same way as north once
-                // uFlip corrects the sense — keeps one shared shader.
+                // uFlip corrects the sense, which keeps one shared shader.
                 float v = mix(vUv.y, 1.0 - vUv.y, uFlip);
 
                 float inner = uEdgeV - uBandWidth;
@@ -153,7 +153,7 @@ function buildBandMesh(hemisphere) {
  * Build the aurora effect: two polar bands plus live NOAA Kp polling.
  * Returns { group, tick(dtSec), getState() }. `group` should be added as a
  * child of earthSpin (like the lat/lon grid) so it corotates with the
- * surface — the auroral oval is fixed to the geomagnetic pole, which turns
+ * surface: the auroral oval is fixed to the geomagnetic pole, which turns
  * with the planet, not with the stars.
  */
 export function buildAurora() {

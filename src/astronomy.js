@@ -1,4 +1,4 @@
-// Astronomy wrapper — every number the visualization uses comes from here.
+// Astronomy wrapper: every number the visualization uses comes from here.
 // Backed by astronomy-engine, which documents about one arcminute of accuracy
 // against JPL Horizons and NOVAS.
 //
@@ -6,15 +6,15 @@
 // scripts/verify-astronomy.js.
 //
 // Coordinate conventions used throughout:
-//   latitude  — degrees, +north / -south, range [-90, 90]
-//   longitude — degrees, +east / -west,  range [-180, 180]
-//   angles    — degrees unless otherwise noted
+//   latitude:  degrees, +north / -south, range [-90, 90]
+//   longitude: degrees, +east / -west,  range [-180, 180]
+//   angles:    degrees unless otherwise noted
 
 import * as Astronomy from 'astronomy-engine';
 
 /**
  * Earth's axial tilt (true obliquity of the ecliptic) at the given instant.
- * Slowly decreasing — ~23.44° today, was 23.4393° at J2000.
+ * Slowly decreasing: ~23.44° today, was 23.4393° at J2000.
  */
 export function getAxialTilt(date = new Date()) {
     const tilt = Astronomy.e_tilt(Astronomy.MakeTime(date));
@@ -30,12 +30,12 @@ export function getSubsolarPoint(date = new Date()) {
     const time = Astronomy.MakeTime(date);
 
     // Sun's geocentric equatorial coordinates (aberration corrected).
-    // For subsolar point, geocentric is correct — the Sun is 149.6M km away,
+    // For subsolar point, geocentric is correct: the Sun is 149.6M km away,
     // so the parallax between geocentric and any surface point is negligible.
     const geoVec = Astronomy.GeoVector(Astronomy.Body.Sun, time, true);
     const equ = Astronomy.EquatorFromVector(geoVec);
-    // equ.ra  — right ascension in hours [0, 24)
-    // equ.dec — declination in degrees   [-90, 90]
+    // equ.ra:  right ascension in hours [0, 24)
+    // equ.dec: declination in degrees   [-90, 90]
 
     // Greenwich Apparent Sidereal Time, in hours
     const gast = Astronomy.SiderealTime(time);
@@ -60,7 +60,7 @@ export function getSubsolarPoint(date = new Date()) {
 
 /**
  * Earth's rotation angle at Greenwich, in degrees [0, 360).
- * This is the Greenwich Apparent Sidereal Time expressed as an angle —
+ * This is the Greenwich Apparent Sidereal Time expressed as an angle,
  * i.e. how far Earth has rotated relative to the vernal equinox.
  *
  * Used to spin the Earth mesh in the 3D scene so its orientation
@@ -74,10 +74,10 @@ export function getEarthRotationAngle(date = new Date()) {
 /**
  * Sun's apparent ecliptic longitude at the given instant, in degrees [0, 360).
  * Reference points:
- *   0°   — vernal equinox   (~March 20)
- *   90°  — summer solstice  (~June 21)
- *   180° — autumnal equinox (~Sept 23)
- *   270° — winter solstice  (~Dec 21)
+ *   0°:   vernal equinox   (~March 20)
+ *   90°:  summer solstice  (~June 21)
+ *   180°: autumnal equinox (~Sept 23)
+ *   270°: winter solstice  (~Dec 21)
  * The Sun's ecliptic latitude is essentially zero (< 0.001°), ignored here.
  */
 export function getSunEclipticLongitude(date = new Date()) {
@@ -106,7 +106,7 @@ export function getSunDirection(date = new Date()) {
 
 /**
  * Unit vector from Earth toward the Sun in the true EQUATORIAL frame of date
- * (+Z = celestial pole) — the frame satellite orbits (TLE/SGP4, "TEME") live
+ * (+Z = celestial pole), the frame satellite orbits (TLE/SGP4, "TEME") live
  * in. Deliberately NOT the scene's frame: physical questions about a real
  * satellite (is it in Earth's shadow?) should be answered with real geometry
  * rather than by trusting how the scene happens to orient the globe.
@@ -203,7 +203,7 @@ export function moonPhaseName(phaseAngleDeg) {
 /**
  * Moon readouts: phase name, illuminated fraction, age since the last new
  * moon, distance, apparent size, next full/new moon, and a supermoon flag
- * (a full moon at or inside ~360,000 km — the popular definition).
+ * (a full moon at or inside ~360,000 km, the popular definition).
  */
 export function getMoonDetails(date = new Date()) {
     const time = Astronomy.MakeTime(date);
@@ -233,12 +233,12 @@ export function getMoonDetails(date = new Date()) {
 /**
  * Moon's position relative to Earth, in the scene's ecliptic frame.
  * Returns:
- *   direction — unit vector { x, y, z } from Earth toward Moon
- *   distanceKm — actual Earth-Moon distance in kilometers
- *   phaseFraction — 0.0 (new moon) to 1.0 (full moon), fraction of disk illuminated
+ *   direction: unit vector { x, y, z } from Earth toward Moon
+ *   distanceKm: actual Earth-Moon distance in kilometers
+ *   phaseFraction: 0.0 (new moon) to 1.0 (full moon), fraction of disk illuminated
  *
  * Uses astronomy-engine's full lunar theory (arcminute accurate), so the
- * 5.14° orbital inclination and lunar parallax are handled correctly —
+ * 5.14° orbital inclination and lunar parallax are handled correctly:
  * the Moon does NOT sit in the ecliptic plane.
  *
  * Frame conversion:

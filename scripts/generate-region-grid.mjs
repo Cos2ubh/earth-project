@@ -154,9 +154,9 @@ for (const v of grid) {
 }
 tokens.push(`${runId.toString(36)}:${runLen.toString(36)}`);
 
-if (names.length > 255) throw new Error('More than 255 countries — widen the grid storage.');
+if (names.length > 255) throw new Error('More than 255 countries: widen the grid storage.');
 
-const body = `// GENERATED FILE — do not edit by hand.
+const body = `// GENERATED FILE: do not edit by hand.
 // Produced by scripts/generate-region-grid.mjs from Natural Earth 50m
 // countries (public domain, via the world-atlas package).
 //

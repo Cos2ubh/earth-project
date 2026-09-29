@@ -1,6 +1,6 @@
-// Atmosphere Fresnel shader — an outer transparent sphere slightly larger
+// Atmosphere Fresnel shader: an outer transparent sphere slightly larger
 // than Earth that renders a soft blue glow around Earth's rim. The Fresnel
-// effect uses dot(viewDirection, normal) — near 0 at glancing angles (rim),
+// effect uses dot(viewDirection, normal): near 0 at glancing angles (rim),
 // near 1 head-on (center), producing the "atmosphere thicker at the edge"
 // look photographs from orbit have.
 //

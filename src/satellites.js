@@ -1,4 +1,4 @@
-// Live ISS tracking — real Celestrak orbital elements propagated with
+// Live ISS tracking: real Celestrak orbital elements propagated with
 // satellite.js (SGP4, the same algorithm ground-tracking software uses).
 //
 // What you see: a bright pulsing dot with an "ISS" label, and a 30-minute
@@ -12,14 +12,14 @@
 //     Latitude, longitude, speed and the sunlight test all use true values.
 //   - TLEs are a snapshot that degrades over days, so the ISS is shown ONLY in
 //     live mode. Scrubbing to another date hides it rather than propagating
-//     today's orbital elements to a date they don't describe — that would look
+//     today's orbital elements to a date they don't describe; that would look
 //     precise while being fiction.
 //   - The trail is the real ground track: the satellite's position over the
 //     last 30 minutes, expressed in the Earth-fixed frame, so it draws the
 //     diagonal path over the continents that ground stations see.
-//   - "In sunlight" is computed from real geometry — the satellite's orbital
+//   - "In sunlight" is computed from real geometry: the satellite's orbital
 //     position against the true Sun direction, both in the same equatorial
-//     frame — with a simple cylindrical Earth shadow (no penumbra, no
+//     frame, with a simple cylindrical Earth shadow (no penumbra, no
 //     atmosphere). Good enough for a low orbit like the ISS, and it does not
 //     depend on how the 3D scene happens to orient the globe.
 //
@@ -95,7 +95,7 @@ function writeCache(key, value) {
     try {
         globalThis.localStorage?.setItem(key, JSON.stringify(value));
     } catch {
-        // storage full or blocked — caching is a courtesy, not a requirement
+        // storage full or blocked: caching is a courtesy, not a requirement
     }
 }
 
@@ -165,7 +165,7 @@ function propagate(satrec, date) {
 
 /**
  * True unless the satellite is inside Earth's shadow. Cylindrical shadow
- * model: behind the Earth relative to the Sun AND closer to the Earth–Sun
+ * model: behind the Earth relative to the Sun AND closer to the Earth-Sun
  * axis than one Earth radius.
  *
  * @param positionKm    satellite position from the geocentre, km, any frame
@@ -238,7 +238,7 @@ function buildTrackedSatellite(entry, satrec, resolution) {
     const baseColor = new THREE.Color(entry.color); // linear working-space values
 
     // Everything below is a child of `root`, which the caller parents to
-    // earthSpin — so positions here are Earth-fixed (they corotate).
+    // earthSpin, so positions here are Earth-fixed (they corotate).
     const root = new THREE.Group();
     root.name = `satellite:${entry.label}`;
 

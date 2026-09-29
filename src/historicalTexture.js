@@ -1,13 +1,13 @@
 // Historical Earth imagery from NASA GIBS (Global Imagery Browse Services).
 // For any date >= 2000-05-01, GIBS returns a full-globe equirectangular JPEG
 // of Earth's day-side taken by MODIS Terra that day. Drops straight into our
-// Earth shader as the day texture — no other changes needed to see hurricanes,
+// Earth shader as the day texture: no other changes needed to see hurricanes,
 // wildfires, dust storms, ice caps as they actually appeared on that date.
 //
 // Constraints (documented for the UI):
 //   - Earliest available date: 2000-05-01 (MODIS Terra launch)
 //   - One image per day (single satellite overpass composite)
-//   - Day-hemisphere only — the night side stays as the base city-lights map
+//   - Day-hemisphere only: the night side stays as the base city-lights map
 //
 // CORS: NASA GIBS returns Access-Control-Allow-Origin: * so we can fetch
 // directly from client-side JS without a proxy.
@@ -58,7 +58,7 @@ const FETCH_TIMEOUT_MS = 12_000;
  * Fetch the GIBS Earth imagery for a given date.
  * Resolves to { texture, dateStr }. Rejects on network failure, on
  * out-of-range dates (guard with isDateInGibsRange first), or on timeout
- * (after FETCH_TIMEOUT_MS) — callers should treat a timeout the same as any
+ * (after FETCH_TIMEOUT_MS). Callers should treat a timeout the same as any
  * other failure and show a "try again" affordance rather than hanging.
  */
 export function fetchHistoricalEarthTexture(date) {
@@ -77,7 +77,7 @@ export function fetchHistoricalEarthTexture(date) {
         new THREE.TextureLoader().load(
             url,
             (texture) => {
-                if (settled) return; // timeout already fired — drop the late image
+                if (settled) return; // timeout already fired, drop the late image
                 settled = true;
                 clearTimeout(timer);
                 texture.colorSpace = THREE.SRGBColorSpace;

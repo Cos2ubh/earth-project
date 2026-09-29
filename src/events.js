@@ -1,15 +1,15 @@
-// Curated event database — famous moments in history, natural disasters,
+// Curated event database: famous moments in history, natural disasters,
 // space missions, cultural landmarks. Used by the search bar to translate
 // natural-language queries into timestamps.
 //
 // Each event has:
-//   name        — display name (shown in the result panel)
-//   keywords    — lowercased strings the fuzzy matcher scores against
-//   date        — ISO 8601 timestamp (UTC). If time-of-day is unknown, use noon.
-//   description — one-line context shown alongside the date
+//   name:        display name (shown in the result panel)
+//   keywords:    lowercased strings the fuzzy matcher scores against
+//   date:        ISO 8601 timestamp (UTC). If time-of-day is unknown, use noon.
+//   description: one-line context shown alongside the date
 //
 // Add events by appending to this array. Order doesn't matter (search scores
-// all candidates). Keep keywords specific — "storm" would match too many things.
+// all candidates). Keep keywords specific: "storm" would match too many things.
 
 export const EVENTS = [
     // --- Natural disasters -------------------------------------------------

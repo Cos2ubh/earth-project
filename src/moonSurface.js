@@ -1,23 +1,23 @@
-// Moon surface — what the Moon actually looks like, not just a gray ball.
+// Moon surface: what the Moon actually looks like, not just a gray ball.
 //
 // Three things were wrong with the plain MeshStandardMaterial sphere:
 //
 //   1. It was never turned. The real Moon is tidally locked (the same face
 //      always looks at Earth), but the sphere just sat there with a random
-//      side toward you — most of the time the nearly featureless far side.
+//      side toward you (most of the time the nearly featureless far side).
 //      orientMoon() turns the texture's centre (the near side, with the big
 //      dark maria that make the "face") toward Earth, north pole up.
 //
 //   2. Lambert lighting made it look like a ball. A real full Moon is a flat,
 //      evenly bright disc with no limb darkening, and it has a razor-sharp
-//      terminator. This uses a Lunar-Lambert blend (Lommel–Seeliger-style
+//      terminator. This uses a Lunar-Lambert blend (Lommel-Seeliger-style
 //      term + a little Lambert) which gives exactly that.
 //
 //   3. No relief. Craters only read as craters when the light rakes across
 //      them. The colour map has crater rims and floors in it, so a high-pass
 //      of its brightness is a decent stand-in for terrain height; it is turned
 //      into a per-pixel normal, and it fades out on its own when the Moon is
-//      small on screen (mip levels average the detail away — no shimmer).
+//      small on screen (mip levels average the detail away, so no shimmer).
 //
 // Plus earthshine: the dark part of a crescent Moon is faintly lit by sunlight
 // bouncing off Earth, strongest at new moon (Earth is "full" from the Moon).
@@ -41,7 +41,7 @@ void main() {
     vSinLat = normal.y; // the poles lie on the sphere's local Y axis
     // Direction of increasing longitude (u) at this point, in world space.
     // From SphereGeometry's own parametrisation (x = -cos(phi) sin(theta),
-    // z = sin(phi) sin(theta), phi = 2*pi*u) — unlike cross(Y, normal), it stays
+    // z = sin(phi) sin(theta), phi = 2*pi*u); unlike cross(Y, normal), it stays
     // well-defined at the poles instead of collapsing to NaN there.
     float phi = uv.x * 6.28318531;
     vEastW = normalize(mat3(modelMatrix) * vec3(sin(phi), 0.0, cos(phi)));
@@ -55,10 +55,10 @@ const FRAGMENT = /* glsl */ `
 uniform sampler2D uMap;
 uniform vec3 uSunDir;        // world space, unit, points from the Moon toward the Sun
 uniform vec3 uEarthDir;      // world space, unit, points from the Moon toward Earth
-uniform float uEarthshine;   // 0..1 — how "full" Earth looks from the Moon
+uniform float uEarthshine;   // 0..1, how "full" Earth looks from the Moon
 uniform float uExposure;
 uniform float uRelief;       // terrain height, as a fraction of the Moon's radius, per unit of brightness
-uniform float uLambertMix;   // 0 = pure Lommel–Seeliger (flat disc), 1 = pure Lambert
+uniform float uLambertMix;   // 0 = pure Lommel-Seeliger (flat disc), 1 = pure Lambert
 uniform float uSaturation;
 
 varying vec2 vUv;
@@ -100,7 +100,7 @@ void main() {
     // screen pixel (or one texel when magnified) so it never shimmers.
     vec2 texSize = vec2(textureSize(uMap, 0));
     float stepV = clamp(fwidth(vUv.y), 1.0 / texSize.y, 0.02);
-    float stepU = 2.0 * stepV; // the map is 2:1 — one step in u is half the arc of one in v
+    float stepU = 2.0 * stepV; // the map is 2:1, so one step in u is half the arc of one in v
     float dhdu = (terrain(vUv + vec2(stepU, 0.0)) - terrain(vUv - vec2(stepU, 0.0))) / (2.0 * stepU);
     float dhdv = (terrain(vUv + vec2(0.0, stepV)) - terrain(vUv - vec2(0.0, stepV))) / (2.0 * stepV);
 
@@ -121,7 +121,7 @@ void main() {
     float mu0 = max(dot(N, L), 0.0) * terminator; // sunlight incidence (with relief)
     float mu = max(dot(geoN, V), 0.0);            // emission angle (true surface)
 
-    // Lunar-Lambert: Lommel–Seeliger keeps a full Moon flat, Lambert adds form.
+    // Lunar-Lambert: Lommel-Seeliger keeps a full Moon flat, Lambert adds form.
     // The LS term climbs toward 2 at a sunlit limb; capped, that stays a soft
     // even brightness instead of a glare.
     float ls = min(2.0 * mu0 / (mu0 + mu + 0.0001), 1.3);
@@ -133,7 +133,7 @@ void main() {
 
     vec3 color = base * uExposure * lit;
 
-    // Earthshine — blue-white light from Earth on the night side.
+    // Earthshine: blue-white light from Earth on the night side.
     float earthLit = max(dot(N, normalize(uEarthDir)), 0.0);
     color += base * uExposure * 0.06 * uEarthshine * earthLit * vec3(0.62, 0.78, 1.0);
 
@@ -177,12 +177,12 @@ const _basis = new THREE.Matrix4();
 const SCENE_NORTH = new THREE.Vector3(0, 1, 0); // +Y = ecliptic north (see astronomy.js)
 
 /**
- * Tidal lock: turn the Moon so the centre of its texture (0° longitude — the
+ * Tidal lock: turn the Moon so the centre of its texture (0° longitude, the
  * middle of the near side) faces Earth, with lunar north toward scene north.
  * `moonDirection` is the unit vector from Earth to the Moon, in scene space.
  *
  * (The real lunar axis is tilted 1.5° to the ecliptic and the disc librates
- * a few degrees — both ignored; they'd be invisible at this scale.)
+ * a few degrees; both are ignored since they'd be invisible at this scale.)
  */
 export function orientMoon(moon, moonDirection) {
     _x.set(-moonDirection.x, -moonDirection.y, -moonDirection.z).normalize();

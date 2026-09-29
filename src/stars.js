@@ -1,10 +1,10 @@
 // Real star field from the Yale Bright Star Catalog (~9,000 stars, all visible
 // naked-eye stars mag ≤ ~6.5). Positions are J2000 equatorial (RA/Dec), which
-// we convert into the scene's ecliptic frame — the same coordinate system Earth
-// and Sun live in — so constellations sit in the sky where they actually do.
+// we convert into the scene's ecliptic frame (the same coordinate system Earth
+// and Sun live in), so constellations sit in the sky where they actually do.
 //
 // Size = f(magnitude), color = f(spectral type) so hot O/B stars read blue,
-// cool M stars read red — the same way real stars look in a long exposure.
+// cool M stars read red, the same way real stars look in a long exposure.
 
 import * as THREE from 'three';
 
@@ -39,7 +39,7 @@ function parseDecDegrees(s) {
 }
 
 // Extract first alphabetic character from spectral type strings like "K0III",
-// "gG9", "A1Vn", "M1.5V" — used for color lookup.
+// "gG9", "A1Vn", "M1.5V", used for color lookup.
 function firstSpectralLetter(spectralType) {
     if (!spectralType) return null;
     const m = spectralType.match(/[OBAFGKM]/i);

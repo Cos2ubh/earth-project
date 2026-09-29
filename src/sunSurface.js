@@ -1,25 +1,25 @@
-// The Sun — a boiling, spotted, limb-darkened star instead of a flat yellow disc.
+// The Sun: a boiling, spotted, limb-darkened star instead of a flat yellow disc.
 //
 // Two pieces, both procedural (no textures, so it stays sharp at any zoom):
 //
-//   photosphere — the visible surface. Three layers of animated cellular noise
+//   photosphere: the visible surface. Three layers of animated cellular noise
 //     give the granulation (bright convection cells with dark lanes between
 //     them, from huge slow "supergranules" down to fine grain that fades out
 //     when it would shimmer at the current size), sunspots with a dark umbra
-//     and a streaky penumbra, bright faculae around them, and limb darkening —
+//     and a streaky penumbra, bright faculae around them, and limb darkening:
 //     the edge of the disc is dimmer and redder than the middle, which is
 //     what makes a sphere of light read as a *sphere*.
 //
-//   corona — a camera-facing additive glow behind the disc: a thin red
+//   corona: a camera-facing additive glow behind the disc, made of a thin red
 //     chromosphere fringe at the limb, a hot inner halo, and faint streamers.
 //     Its inner edge is bright enough to catch the bloom pass.
 //
 // What is real and what is stylised: the granulation is stylised (real granules
-// are ~1,000 km — about 1,400 across the disc — and live for minutes), and so is
+// are ~1,000 km, about 1,400 across the disc, and live for minutes), and so is
 // the sunspot pattern: spots are pseudo-random per simulated date, they grow
 // and fade over weeks like real groups do, and they are carried around the Sun
 // with the real *differential rotation* law (the equator turns in ~25 days,
-// high latitudes slower) — but they are not NOAA's actual sunspot data.
+// high latitudes slower), but they are not NOAA's actual sunspot data.
 // Scrub time and you will watch them drift across the disc at the right pace.
 
 import * as THREE from 'three';
@@ -60,10 +60,10 @@ function computeSpots(simMs, out) {
         const r3 = hash01(cycle + 13, i + 21.3);
 
         const hemisphere = r1 < 0.5 ? -1 : 1;
-        const lat = hemisphere * (6 + 22 * r2) * DEG; // activity belts, 6°–28°
+        const lat = hemisphere * (6 + 22 * r2) * DEG; // activity belts, 6° to 28°
         const lon0 = r3 * Math.PI * 2;
 
-        // Grows quickly, lingers, decays — and is absent at both ends.
+        // Grows quickly, lingers, decays, and is absent at both ends.
         const envelope = Math.pow(Math.sin(Math.PI * age), 0.4);
         const size = (0.055 + 0.11 * hash01(cycle + 19, i + 5.3)) * envelope;
 
@@ -134,7 +134,7 @@ float fbm(vec3 p) {
         p = p * 2.03 + vec3(1.7, 9.2, 3.1);
         amp *= 0.5;
     }
-    return sum / 0.875; // the 3 octaves sum to at most 0.875 — keep the 0..1 range
+    return sum / 0.875; // the 3 octaves sum to at most 0.875, so this keeps the 0..1 range
 }
 
 // Cellular noise with feature points that wander over time, so cells slowly
@@ -222,7 +222,7 @@ void main() {
 
     float t = 0.70;
     t += granulation(pw, 4.4, 0.10, 0.35, 1.0) * 0.34;       // supergranules: big, slow
-    // Layers that would be sub-pixel are skipped outright — most of the time the
+    // Layers that would be sub-pixel are skipped outright: most of the time the
     // Sun is small on screen, and this is where the cost is.
     if (detailMain > 0.02) t += granulation(pw, 15.0, 0.42, 0.30, detailMain) * 0.46; // granules
     if (detailFine > 0.02) t += granulation(pw + 3.7, 41.0, 0.70, 0.35, detailFine) * 0.22; // fine grain
@@ -238,7 +238,7 @@ void main() {
         if (s.w < 0.004) continue;
         vec3 c = s.xyz;
         float cosAng = dot(p, c);
-        if (cosAng < cos(min(s.w * 3.6, 3.0))) continue; // beyond the faculae — skip the noise work
+        if (cosAng < cos(min(s.w * 3.6, 3.0))) continue; // beyond the faculae, skip the noise work
         float ang = acos(clamp(cosAng, -1.0, 1.0));
 
         // Ragged edges and radial filaments in the penumbra.

@@ -1,4 +1,4 @@
-// Location pin — a small marker placed on Earth's surface at the user's
+// Location pin: a small marker placed on Earth's surface at the user's
 // geographic coordinates. Parented to earthSpin so it rotates with the surface.
 //
 // Convention (matches earthSpin frame):
@@ -37,7 +37,7 @@ export function buildLocationPin(latDeg, lonDeg) {
         new THREE.ConeGeometry(PIN_RADIUS, PIN_HEIGHT, 16),
         new THREE.MeshBasicMaterial({ color: 0x4ad4c8 }),
     );
-    // Cone's default axis is +Y — that's what we want when it stands "up"
+    // Cone's default axis is +Y, which is what we want when it stands "up"
     // relative to the surface. Shift so base sits on the sphere surface.
     cone.position.y = PIN_HEIGHT / 2;
     group.add(cone);

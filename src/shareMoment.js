@@ -1,14 +1,14 @@
-// Share-a-moment — turns "look at this" into something that actually
+// Share-a-moment: turns "look at this" into something that actually
 // travels. Two halves:
 //
 //   1. URL state: the current simulated time + camera position get encoded
 //      into query params (?t=...&cx=...&cy=...&cz=...). Opening that link
-//      reproduces the exact view — same moment in history, same angle —
+//      reproduces the exact view (same moment in history, same angle)
 //      instead of dumping the visitor back at "now, default camera".
 //
 //   2. A composed share image: the rendered WebGL frame plus a small
 //      burned-in stat card (echoing the HUD) so a downloaded PNG is
-//      self-explanatory even divorced from the page — someone looking at
+//      self-explanatory even divorced from the page: someone looking at
 //      a tweet doesn't get to hover for a tooltip.
 //
 // Nothing here touches simulated time or astronomy math directly; it only
@@ -21,7 +21,7 @@ const PARAM_CZ = 'cz';
 
 /**
  * Parse ?t=&cx=&cy=&cz= from the current URL, if all four are present and
- * valid. Returns { date, position: {x,y,z} } or null (missing/malformed —
+ * valid. Returns { date, position: {x,y,z} } or null (missing/malformed:
  * callers should fall back to the normal live/intro behavior, not error out
  * over a bad or partial link).
  */
@@ -66,9 +66,9 @@ export function buildTweetIntentUrl(shareUrl, text) {
 }
 
 /**
- * Copy text to the clipboard. Returns a Promise<boolean> — true on success.
+ * Copy text to the clipboard. Returns a Promise<boolean>: true on success.
  * Clipboard access can be denied (permissions, non-secure context) and
- * that's routine, not exceptional — callers should treat false as "show the
+ * that's routine, not exceptional. Callers should treat false as "show the
  * link some other way," not as a crash.
  */
 export async function copyToClipboard(text) {
@@ -85,10 +85,10 @@ export async function copyToClipboard(text) {
  * card burned into the bottom-left corner, styled to echo the on-page HUD.
  * Forces one more composer render first so the captured frame is current.
  *
- * @param renderer THREE.WebGLRenderer — its .domElement is the source pixels.
- * @param composer EffectComposer — re-rendered once, synchronously, right
+ * @param renderer THREE.WebGLRenderer: its .domElement is the source pixels.
+ * @param composer EffectComposer: re-rendered once, synchronously, right
  *                 before capture so the buffer is guaranteed fresh.
- * @param lines    string[] — stat lines, e.g. ["2026-09-28 12:00 UTC",
+ * @param lines    string[]: stat lines, e.g. ["2026-09-28 12:00 UTC",
  *                 "Axial tilt 23.4381°", "Moon 95.9% · 373,485 km"].
  * @returns data URL (image/png).
  */
@@ -118,7 +118,7 @@ export function captureMomentImage(renderer, composer, lines) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.beginPath();
     // roundRect is broadly supported (Chrome/Firefox/Safari 2022+) but not
-    // universal — fall back to a plain rect rather than let capture throw.
+    // universal, so fall back to a plain rect rather than let capture throw.
     if (ctx.roundRect) {
         ctx.roundRect(cardX, cardY, cardWidth, cardHeight, 10 * scale);
     } else {

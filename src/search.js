@@ -1,17 +1,17 @@
-// Search — natural-language query → date/time to jump to.
+// Search: natural-language query → date/time to jump to.
 //
 // Two-stage lookup:
 //   1. Fuzzy match against the curated event database (src/events.js).
 //   2. Fall back to chrono-node date parsing for explicit dates like
 //      "August 29 2005" or "3 months ago" or "next full moon".
 //
-// Event lookup wins when it hits — "when did katrina happen" is a real intent,
+// Event lookup wins when it hits: "when did katrina happen" is a real intent,
 // not a date parse. Chrono is the safety net for queries the event DB missed.
 
 import * as chrono from 'chrono-node';
 import { EVENTS } from './events.js';
 
-// Words that carry no meaning for event matching — dropped before scoring.
+// Words that carry no meaning for event matching, dropped before scoring.
 const STOP_WORDS = new Set([
     'the', 'a', 'an', 'of', 'in', 'on', 'at', 'to', 'for', 'and', 'or', 'but',
     'was', 'is', 'are', 'were', 'be', 'been', 'when', 'what', 'where', 'how',
@@ -40,7 +40,7 @@ function normalize(text) {
 function scoreEvent(event, queryLower, queryWords) {
     let score = 0;
 
-    // Substring hits on the raw query — captures multi-word event names.
+    // Substring hits on the raw query, which captures multi-word event names.
     for (const kw of event.keywords) {
         if (queryLower.includes(kw)) score += 3;
     }
@@ -90,9 +90,9 @@ function findBestDate(query, referenceDate) {
 /**
  * Resolve a natural-language query to a jump target.
  * Returns one of:
- *   { kind: 'event', date, event }        — matched a curated event
- *   { kind: 'date',  date, text }         — parsed as a date/time expression
- *   { kind: 'none' }                      — no match
+ *   { kind: 'event', date, event }        matched a curated event
+ *   { kind: 'date',  date, text }         parsed as a date/time expression
+ *   { kind: 'none' }                      no match
  */
 export function resolveQuery(query, referenceDate = new Date()) {
     if (!query || !query.trim()) return { kind: 'none' };

@@ -1,4 +1,4 @@
-// Moon orbit ring — traces the Moon's actual path around Earth over one
+// Moon orbit ring: traces the Moon's actual path around Earth over one
 // sidereal month (27.32 days). Uses the same astronomy engine as everything
 // else, so the orbit shows the real 5.14° inclination to the ecliptic and
 // the current orientation of the orbital plane.
