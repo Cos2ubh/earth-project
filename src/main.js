@@ -35,7 +35,7 @@ import { buildSun } from './sunSurface.js';
 import { buildLocationPin } from './locationPin.js';
 import { resolveQuery } from './search.js';
 import { fetchHistoricalEarthTexture, isDateInGibsRange } from './historicalTexture.js';
-import { upgradeToHighRes } from './textureUpgrade.js';
+import { upgradeToHighRes, revertToBaseTextures } from './textureUpgrade.js';
 import { playIntro } from './intro.js';
 import {
     readSharedStateFromUrl,
@@ -249,6 +249,7 @@ const materialRefs = {
         if (oldBase && oldBase !== materialRefs.earthMaterial.uniforms.uDayTexture.value) {
             oldBase.dispose();
         }
+        return oldBase; // lets textureUpgrade put it back if the GPU runs out of memory
     },
 };
 
@@ -291,9 +292,10 @@ buildClouds().then(({ mesh, setSunDirection, tick }) => {
 const hdButton = document.getElementById('hd-toggle');
 const hdStatus = document.getElementById('hd-status');
 let hdUpgradeStarted = false;
+let hdBlocked = false; // the GPU ran out of memory with HD loaded: no second try this visit
 
 function startHighResUpgrade() {
-    if (hdUpgradeStarted) return;
+    if (hdUpgradeStarted || hdBlocked) return;
     if (!materialRefs.earthMaterial || !materialRefs.cloudMaterial) return;
     hdUpgradeStarted = true;
     hdButton.setAttribute('data-loading', '1');
@@ -303,6 +305,9 @@ function startHighResUpgrade() {
     upgradeToHighRes(materialRefs, (which) => {
         console.log('[HD] loaded:', which);
     }).then(({ succeeded, failed }) => {
+        // The GPU ran out of memory while this was running. The handler below
+        // already put the small textures back and reset the button.
+        if (hdBlocked) return;
         // Partial success is still success: only the textures that actually
         // failed get retried; the ones that loaded stay loaded.
         hdButton.removeAttribute('data-loading');
@@ -325,6 +330,44 @@ function startHighResUpgrade() {
 }
 
 hdButton.addEventListener('click', () => startHighResUpgrade());
+
+// --- Graphics memory safety net ----------------------------------------------
+// When the GPU runs out of memory the browser drops the WebGL context and the
+// canvas goes blank (white in Chrome). three.js uploads every texture again once
+// the context comes back, so the small textures go back first, or the HD set would
+// cause the same loss again. The dead canvas is hidden so the page shows black
+// space, and HD stays off for the rest of the visit.
+
+const hintEl = document.getElementById('hint');
+const hintText = hintEl.textContent;
+const hintColor = hintEl.style.color;
+let contextRestoreTimer = null;
+
+canvas.addEventListener('webglcontextlost', () => {
+    canvas.style.visibility = 'hidden';
+    if (revertToBaseTextures()) {
+        hdBlocked = true;
+        hdUpgradeStarted = false;
+        hdButton.removeAttribute('data-loading');
+        hdButton.removeAttribute('data-loaded');
+        hdStatus.textContent = 'HD off';
+        hdButton.title = 'HD ran out of graphics memory on this device';
+        console.warn('[HD] the GPU ran out of memory, back to the standard textures.');
+    }
+    // If the browser never hands the context back, say so instead of leaving a blank page.
+    clearTimeout(contextRestoreTimer);
+    contextRestoreTimer = setTimeout(() => {
+        hintEl.textContent = 'The graphics reset and did not come back. Reload the page.';
+        hintEl.style.color = 'rgba(255, 255, 255, 0.85)';
+    }, 4000);
+});
+
+canvas.addEventListener('webglcontextrestored', () => {
+    clearTimeout(contextRestoreTimer);
+    canvas.style.visibility = 'visible';
+    hintEl.textContent = hintText;
+    hintEl.style.color = hintColor;
+});
 
 // --- Time-scrub controls -----------------------------------------------------
 // Slider spans ± 180 days from "now at page load." Speed presets let you

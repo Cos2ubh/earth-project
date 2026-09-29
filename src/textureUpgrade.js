@@ -41,13 +41,47 @@ function loadTexture(url, colorSpace) {
     });
 }
 
+// What every swap replaced, so a GPU that runs out of memory can go back to the
+// small textures. dispose() only frees the GPU copy. The 2K image stays in
+// memory and uploads again the next time it is used.
+const swaps = []; // { hd, restore }
+let generation = 0; // bumped on a revert, so downloads still in flight are dropped
+let running = 0; // upgradeToHighRes calls that haven't finished
+
 // Swap a uniform's texture value in place: sets the new texture, then
 // disposes the old one to free GPU memory.
 function swapUniformTexture(material, uniformName, newTexture) {
     const old = material.uniforms[uniformName].value;
     material.uniforms[uniformName].value = newTexture;
+    swaps.push({
+        hd: newTexture,
+        restore: () => {
+            material.uniforms[uniformName].value = old;
+            material.needsUpdate = true;
+        },
+    });
     if (old && old.dispose) old.dispose();
     material.needsUpdate = true;
+}
+
+// A texture that arrived after the upgrade was cancelled: throw it away.
+function drop(tex) {
+    tex.dispose();
+    return null;
+}
+
+/**
+ * Put the small textures back and cancel any HD download still in flight.
+ * Returns true if HD had been loaded, or was still loading.
+ */
+export function revertToBaseTextures() {
+    const hadHighRes = swaps.length > 0 || running > 0;
+    generation++;
+    for (const swap of swaps.splice(0).reverse()) {
+        swap.restore();
+        swap.hd.dispose();
+    }
+    return hadHighRes;
 }
 
 /**
@@ -60,19 +94,24 @@ function swapUniformTexture(material, uniformName, newTexture) {
  * the rest had already swapped in successfully.
  *
  * Returns a summary: { succeeded: string[], failed: { name, error }[] }.
- * onProgress(name) fires per-texture on success, same as before.
+ * onProgress(name) fires per-texture on success, same as before. A texture that
+ * arrives after revertToBaseTextures() is dropped and counts as neither.
  */
 export async function upgradeToHighRes(refs, onProgress) {
+    const gen = generation;
     const tasks = [];
 
     if (refs.earthMaterial) {
         tasks.push(
             loadTexture(HIGH_RES.earthDay, THREE.SRGBColorSpace).then((tex) => {
+                if (gen !== generation) return drop(tex);
                 // Day texture might be temporarily overlaid by historical GIBS
                 // imagery. Let the caller decide whether to swap the uniform
-                // or just update its "base" reference.
+                // or just update its "base" reference. It hands back the base
+                // it replaced, which is what a revert puts back.
                 if (refs.onEarthDayReady) {
-                    refs.onEarthDayReady(tex);
+                    const base = refs.onEarthDayReady(tex);
+                    swaps.push({ hd: tex, restore: () => refs.onEarthDayReady(base) });
                 } else {
                     swapUniformTexture(refs.earthMaterial, 'uDayTexture', tex);
                 }
@@ -80,6 +119,7 @@ export async function upgradeToHighRes(refs, onProgress) {
                 return 'earth day';
             }),
             loadTexture(HIGH_RES.earthNight, THREE.SRGBColorSpace).then((tex) => {
+                if (gen !== generation) return drop(tex);
                 swapUniformTexture(refs.earthMaterial, 'uNightTexture', tex);
                 onProgress?.('earth night');
                 return 'earth night';
@@ -90,6 +130,7 @@ export async function upgradeToHighRes(refs, onProgress) {
     if (refs.cloudMaterial) {
         tasks.push(
             loadTexture(HIGH_RES.clouds, THREE.SRGBColorSpace).then((tex) => {
+                if (gen !== generation) return drop(tex);
                 swapUniformTexture(refs.cloudMaterial, 'uCloudTexture', tex);
                 onProgress?.('clouds');
                 return 'clouds';
@@ -100,6 +141,7 @@ export async function upgradeToHighRes(refs, onProgress) {
     if (refs.moonMaterial) {
         tasks.push(
             loadTexture(HIGH_RES.moon, THREE.SRGBColorSpace).then((tex) => {
+                if (gen !== generation) return drop(tex);
                 // Moon is a ShaderMaterial (see moonSurface.js): swap the uniform,
                 // keeping the anisotropy the 2K map was set up with.
                 tex.anisotropy = refs.moonMaterial.uniforms.uMap.value?.anisotropy ?? 1;
@@ -118,13 +160,18 @@ export async function upgradeToHighRes(refs, onProgress) {
         if (n === 'moon') return !!refs.moonMaterial;
         return false;
     });
+    running++;
     const results = await Promise.allSettled(tasks);
+    running--;
 
     const succeeded = [];
     const failed = [];
     results.forEach((r, i) => {
-        if (r.status === 'fulfilled') succeeded.push(r.value);
-        else failed.push({ name: names[i], error: r.reason });
+        if (r.status === 'fulfilled') {
+            if (r.value) succeeded.push(r.value); // null: dropped after a revert
+        } else {
+            failed.push({ name: names[i], error: r.reason });
+        }
     });
 
     return { succeeded, failed };
