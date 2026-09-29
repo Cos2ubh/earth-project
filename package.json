@@ -1,7 +1,8 @@
 {
   "name": "earth-project",
   "version": "0.1.0",
-  "description": "A real-time 3D visualization of Earth, showing the planet's current axial tilt, rotation, and position of the Sun and Moon — computed from live astronomical data, rendered in the browser.",
+  "description": "A real time 3D Earth in the browser. True axial tilt and rotation, with the Sun, Moon, ISS, aurora and meteor showers computed from astronomical data.",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,10 +15,22 @@
     "three.js",
     "astronomy",
     "3d",
-    "webgl"
+    "webgl",
+    "space",
+    "visualization",
+    "iss",
+    "vite"
   ],
   "author": "Cos2ubh",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cos2ubh/earth-project.git"
+  },
+  "homepage": "https://github.com/Cos2ubh/earth-project#readme",
+  "bugs": {
+    "url": "https://github.com/Cos2ubh/earth-project/issues"
+  },
   "dependencies": {
     "astronomy-engine": "^2.1.19",
     "chrono-node": "^2.10.1",
